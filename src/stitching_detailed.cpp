@@ -432,8 +432,8 @@ int main(int argc, char* argv[]) {
     (*finder)(img, features[i]);
 #endif
     features[i].img_idx = i;
-    LOGLN("Features in image #" << i + 1 << ": "
-                                << features[i].keypoints.size());
+    //    LOGLN("Features in image #" << i + 1 << ": "
+    //                                << features[i].keypoints.size());
 
     resize(full_img, img, Size(), seam_scale, seam_scale, INTER_LINEAR_EXACT);
     images[i] = img.clone();
@@ -498,6 +498,10 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+  LOG("Estimating");
+#if ENABLE_LOG
+  t = getTickCount();
+#endif
   Ptr<Estimator> estimator;
   if (estimator_type == "affine")
     estimator = makePtr<AffineBasedEstimator>();
@@ -514,9 +518,9 @@ int main(int argc, char* argv[]) {
     Mat R;
     cameras[i].R.convertTo(R, CV_32F);
     cameras[i].R = R;
-    LOGLN("Initial camera intrinsics #" << indices[i] + 1 << ":\nK:\n"
-                                        << cameras[i].K() << "\nR:\n"
-                                        << cameras[i].R);
+    //    LOGLN("Initial camera intrinsics #" << indices[i] + 1 << ":\nK:\n"
+    //                                        << cameras[i].K() << "\nR:\n"
+    //                                        << cameras[i].R);
   }
 
   Ptr<detail::BundleAdjusterBase> adjuster;
@@ -550,9 +554,9 @@ int main(int argc, char* argv[]) {
 
   vector<double> focals;
   for (size_t i = 0; i < cameras.size(); ++i) {
-    LOGLN("Camera #" << indices[i] + 1 << ":\nK:\n"
-                     << cameras[i].K() << "\nR:\n"
-                     << cameras[i].R);
+    //    LOGLN("Camera #" << indices[i] + 1 << ":\nK:\n"
+    //                     << cameras[i].K() << "\nR:\n"
+    //                     << cameras[i].R);
     focals.push_back(cameras[i].focal);
   }
 
@@ -572,6 +576,8 @@ int main(int argc, char* argv[]) {
     waveCorrect(rmats, wave_correct);
     for (size_t i = 0; i < cameras.size(); ++i) cameras[i].R = rmats[i];
   }
+  LOGLN("Estimating, time: " << ((getTickCount() - t) / getTickFrequency())
+                             << " sec");
 
   LOGLN("Warping images (auxiliary)... ");
 #if ENABLE_LOG
@@ -718,23 +724,23 @@ int main(int argc, char* argv[]) {
   else if (seam_find_type == "voronoi")
     seam_finder = makePtr<detail::VoronoiSeamFinder>();
   else if (seam_find_type == "gc_color") {
-#ifdef HAVE_OPENCV_CUDALEGACY
-    if (try_cuda && cuda::getCudaEnabledDeviceCount() > 0)
-      seam_finder = makePtr<detail::GraphCutSeamFinderGpu>(
-          GraphCutSeamFinderBase::COST_COLOR);
-    else
-#endif
-      seam_finder = makePtr<detail::GraphCutSeamFinder>(
-          GraphCutSeamFinderBase::COST_COLOR);
+    //#ifdef HAVE_OPENCV_CUDALEGACY
+    //    if (try_cuda && cuda::getCudaEnabledDeviceCount() > 0)
+    //      seam_finder = makePtr<detail::GraphCutSeamFinderGpu>(
+    //          GraphCutSeamFinderBase::COST_COLOR);
+    //    else
+    //#endif
+    seam_finder =
+        makePtr<detail::GraphCutSeamFinder>(GraphCutSeamFinderBase::COST_COLOR);
   } else if (seam_find_type == "gc_colorgrad") {
-#ifdef HAVE_OPENCV_CUDALEGACY
-    if (try_cuda && cuda::getCudaEnabledDeviceCount() > 0)
-      seam_finder = makePtr<detail::GraphCutSeamFinderGpu>(
-          GraphCutSeamFinderBase::COST_COLOR_GRAD);
-    else
-#endif
-      seam_finder = makePtr<detail::GraphCutSeamFinder>(
-          GraphCutSeamFinderBase::COST_COLOR_GRAD);
+    //#ifdef HAVE_OPENCV_CUDALEGACY
+    //    if (try_cuda && cuda::getCudaEnabledDeviceCount() > 0)
+    //      seam_finder = makePtr<detail::GraphCutSeamFinderGpu>(
+    //          GraphCutSeamFinderBase::COST_COLOR_GRAD);
+    //    else
+    //#endif
+    seam_finder = makePtr<detail::GraphCutSeamFinder>(
+        GraphCutSeamFinderBase::COST_COLOR_GRAD);
   } else if (seam_find_type == "dp_color")
     seam_finder = makePtr<detail::DpSeamFinder>(DpSeamFinder::COLOR);
   else if (seam_find_type == "dp_colorgrad")
@@ -769,7 +775,7 @@ int main(int argc, char* argv[]) {
   double compose_work_aspect = 1;
 
   for (int img_idx = 0; img_idx < num_images; ++img_idx) {
-    LOGLN("Compositing image #" << indices[img_idx] + 1);
+    //    LOGLN("Compositing image #" << indices[img_idx] + 1);
 
     // Read image and resize it if necessary
     full_img = imread(samples::findFile(img_names[img_idx]));
