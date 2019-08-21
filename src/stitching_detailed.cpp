@@ -1,4 +1,3 @@
-
 #include <fstream>
 #include <iostream>
 #include <opencv2/core/utility.hpp>
@@ -256,10 +255,12 @@ static int parseCmdArgs(int argc, char** argv) {
         expos_comp_type = ExposureCompensator::GAIN;
       else if (string(argv[i + 1]) == "gain_blocks")
         expos_comp_type = ExposureCompensator::GAIN_BLOCKS;
+#if (CV_VERSION_MAJOR >= 4)
       else if (string(argv[i + 1]) == "channels")
         expos_comp_type = ExposureCompensator::CHANNELS;
       else if (string(argv[i + 1]) == "channels_blocks")
         expos_comp_type = ExposureCompensator::CHANNELS_BLOCKS;
+#endif
       else {
         cout << "Bad exposure compensation method\n";
         return -1;
@@ -356,6 +357,7 @@ int main(int argc, char* argv[]) {
   int64 t = getTickCount();
 #endif
 
+#if (CV_VERSION_MAJOR >= 4)
   Ptr<Feature2D> finder;
   if (features_type == "orb") {
     finder = ORB::create();
@@ -373,6 +375,24 @@ int main(int argc, char* argv[]) {
     cout << "Unknown 2D features type: '" << features_type << "'.\n";
     return -1;
   }
+#else
+  Ptr<FeaturesFinder> finder;
+  if (features_type == "surf") {
+#ifdef HAVE_OPENCV_XFEATURES2D
+    if (try_cuda && cuda::getCudaEnabledDeviceCount() > 0)
+      finder = makePtr<SurfFeaturesFinderGpu>();
+    else
+#endif
+      finder = makePtr<SurfFeaturesFinder>();
+  } else if (features_type == "orb") {
+    finder = makePtr<OrbFeaturesFinder>();
+  } else if (features_type == "sift") {
+    finder = makePtr<SiftFeaturesFinder>();
+  } else {
+    cout << "Unknown 2D features type: '" << features_type << "'.\n";
+    return -1;
+  }
+#endif
 
   Mat full_img, img;
   vector<ImageFeatures> features(num_images);
@@ -406,7 +426,11 @@ int main(int argc, char* argv[]) {
       is_seam_scale_set = true;
     }
 
+#if (CV_VERSION_MAJOR >= 4)
     computeImageFeatures(finder, img, features[i]);
+#else
+    (*finder)(img, features[i]);
+#endif
     features[i].img_idx = i;
     LOGLN("Features in image #" << i + 1 << ": "
                                 << features[i].keypoints.size());
@@ -415,6 +439,9 @@ int main(int argc, char* argv[]) {
     images[i] = img.clone();
   }
 
+#if (CV_VERSION_MAJOR < 4)
+  finder->collectGarbage();
+#endif
   full_img.release();
   img.release();
 
@@ -652,6 +679,8 @@ int main(int argc, char* argv[]) {
 
   Ptr<ExposureCompensator> compensator =
       ExposureCompensator::createDefault(expos_comp_type);
+
+#if (CV_VERSION_MAJOR >= 4)
   if (dynamic_cast<GainCompensator*>(compensator.get())) {
     GainCompensator* gcompensator =
         dynamic_cast<GainCompensator*>(compensator.get());
@@ -671,6 +700,7 @@ int main(int argc, char* argv[]) {
     bcompensator->setNrGainsFilteringIterations(expos_comp_nr_filtering);
     bcompensator->setBlockSize(expos_comp_block_size, expos_comp_block_size);
   }
+#endif
 
   compensator->feed(corners, images_warped, masks_warped);
 
