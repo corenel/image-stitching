@@ -473,7 +473,12 @@ int main(int argc, char* argv[]) {
     matcher =
         makePtr<BestOf2NearestRangeMatcher>(range_width, try_cuda, match_conf);
 
-  (*matcher)(features, pairwise_matches);
+  UMat matchMask(features.size(), features.size(), CV_8U, Scalar(0));
+  for (int i = 0; i < num_images - 1; ++i) {
+    matchMask.getMat(ACCESS_READ).at<char>(i, i + 1) = 1;
+  }
+
+  (*matcher)(features, pairwise_matches, matchMask);
   matcher->collectGarbage();
 
   LOGLN("Pairwise matching, time: "
