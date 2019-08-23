@@ -21,6 +21,7 @@
 #define ENABLE_LOG 1
 #define LOG(msg) std::cout << msg
 #define LOGLN(msg) std::cout << msg << std::endl
+// #define LOGLN(msg) ;
 
 using namespace std;
 using namespace cv;
@@ -123,10 +124,10 @@ static void printUsage() {
 vector<String> img_names;
 bool preview = false;
 bool try_cuda = false;
-double work_megapix = 0.6;
-double seam_megapix = 0.1;
+double work_megapix = 0.08;
+double seam_megapix = 0.08;
 double compose_megapix = -1;
-float conf_thresh = 1.f;
+float conf_thresh = 0.5f;
 #ifdef HAVE_OPENCV_XFEATURES2D
 string features_type = "surf";
 #else
@@ -140,13 +141,13 @@ bool do_wave_correct = true;
 WaveCorrectKind wave_correct = detail::WAVE_CORRECT_HORIZ;
 bool save_graph = false;
 std::string save_graph_to;
-string warp_type = "spherical";
-int expos_comp_type = ExposureCompensator::GAIN_BLOCKS;
+string warp_type = "cylindrical";
+int expos_comp_type = ExposureCompensator::GAIN;
 int expos_comp_nr_feeds = 1;
 int expos_comp_nr_filtering = 2;
 int expos_comp_block_size = 32;
 float match_conf = 0.3f;
-string seam_find_type = "gc_color";
+string seam_find_type = "dp_colorgrad";
 int blend_type = Blender::MULTI_BAND;
 int timelapse_type = Timelapser::AS_IS;
 float blend_strength = 5;
@@ -319,7 +320,7 @@ static int parseCmdArgs(int argc, char** argv) {
       result_name = argv[i + 1];
       i++;
     } else
-      img_names.push_back(argv[i]);
+      img_names.emplace_back(argv[i]);
   }
   if (preview) {
     compose_megapix = 0.6;
@@ -442,8 +443,8 @@ int main(int argc, char* argv[]) {
     (*finder)(img[i], features[i]);
 #endif
     features[i].img_idx = i;
-    //    LOGLN("Features in image #" << i + 1 << ": "
-    //                                << features[i].keypoints.size());
+    LOGLN("Features in image #" << i + 1 << ": "
+                                << features[i].keypoints.size());
 
     resize(full_img[i], img[i], Size(), seam_scale, seam_scale,
            INTER_LINEAR_EXACT);
@@ -459,7 +460,7 @@ int main(int argc, char* argv[]) {
   LOGLN("Finding features, time: "
         << ((getTickCount() - t) / getTickFrequency()) << " sec");
 
-  LOG("Pairwise matching");
+  LOGLN("Pairwise matching");
 #if ENABLE_LOG
   t = getTickCount();
 #endif
@@ -514,7 +515,7 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  LOG("Estimating");
+  LOGLN("Estimating");
 #if ENABLE_LOG
   t = getTickCount();
 #endif
@@ -530,10 +531,10 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  for (size_t i = 0; i < cameras.size(); ++i) {
+  for (auto& camera : cameras) {
     Mat R;
-    cameras[i].R.convertTo(R, CV_32F);
-    cameras[i].R = R;
+    camera.R.convertTo(R, CV_32F);
+    camera.R = R;
     //    LOGLN("Initial camera intrinsics #" << indices[i] + 1 << ":\nK:\n"
     //                                        << cameras[i].K() << "\nR:\n"
     //                                        << cameras[i].R);
@@ -569,11 +570,12 @@ int main(int argc, char* argv[]) {
   // Find median focal length
 
   vector<double> focals;
-  for (size_t i = 0; i < cameras.size(); ++i) {
+  focals.reserve(cameras.size());
+  for (const auto& camera : cameras) {
     //    LOGLN("Camera #" << indices[i] + 1 << ":\nK:\n"
     //                     << cameras[i].K() << "\nR:\n"
     //                     << cameras[i].R);
-    focals.push_back(cameras[i].focal);
+    focals.push_back(camera.focal);
   }
 
   sort(focals.begin(), focals.end());
@@ -587,8 +589,10 @@ int main(int argc, char* argv[]) {
 
   if (do_wave_correct) {
     vector<Mat> rmats;
-    for (size_t i = 0; i < cameras.size(); ++i)
-      rmats.push_back(cameras[i].R.clone());
+    rmats.reserve(cameras.size());
+    for (const auto& camera : cameras) {
+      rmats.push_back(camera.R.clone());
+    }
     waveCorrect(rmats, wave_correct);
     for (size_t i = 0; i < cameras.size(); ++i) cameras[i].R = rmats[i];
   }
@@ -673,7 +677,7 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i < num_images; ++i) {
     Mat_<float> K;
     cameras[i].K().convertTo(K, CV_32F);
-    float swa = (float)seam_work_aspect;
+    auto swa = (float)seam_work_aspect;
     K(0, 0) *= swa;
     K(0, 2) *= swa;
     K(1, 1) *= swa;
@@ -704,20 +708,17 @@ int main(int argc, char* argv[]) {
 
 #if (CV_VERSION_MAJOR >= 4)
   if (dynamic_cast<GainCompensator*>(compensator.get())) {
-    GainCompensator* gcompensator =
-        dynamic_cast<GainCompensator*>(compensator.get());
+    auto* gcompensator = dynamic_cast<GainCompensator*>(compensator.get());
     gcompensator->setNrFeeds(expos_comp_nr_feeds);
   }
 
   if (dynamic_cast<ChannelsCompensator*>(compensator.get())) {
-    ChannelsCompensator* ccompensator =
-        dynamic_cast<ChannelsCompensator*>(compensator.get());
+    auto* ccompensator = dynamic_cast<ChannelsCompensator*>(compensator.get());
     ccompensator->setNrFeeds(expos_comp_nr_feeds);
   }
 
   if (dynamic_cast<BlocksCompensator*>(compensator.get())) {
-    BlocksCompensator* bcompensator =
-        dynamic_cast<BlocksCompensator*>(compensator.get());
+    auto* bcompensator = dynamic_cast<BlocksCompensator*>(compensator.get());
     bcompensator->setNrFeeds(expos_comp_nr_feeds);
     bcompensator->setNrGainsFilteringIterations(expos_comp_nr_filtering);
     bcompensator->setBlockSize(expos_comp_block_size, expos_comp_block_size);
@@ -793,46 +794,70 @@ int main(int argc, char* argv[]) {
   // double compose_seam_aspect = 1;
   double compose_work_aspect = 1;
 
+  if (!is_compose_scale_set) {
+    if (compose_megapix > 0)
+      compose_scale =
+          min(1.0, sqrt(compose_megapix * 1e6 / full_img[0].size().area()));
+    is_compose_scale_set = true;
+
+    // Compute relative scales
+    // compose_seam_aspect = compose_scale / seam_scale;
+    compose_work_aspect = compose_scale / work_scale;
+
+    // Update warped image scale
+    warped_image_scale *= static_cast<float>(compose_work_aspect);
+    warper = warper_creator->create(warped_image_scale);
+
+    // Update corners and sizes
+    for (int i = 0; i < num_images; ++i) {
+      // Update intrinsics
+      cameras[i].focal *= compose_work_aspect;
+      cameras[i].ppx *= compose_work_aspect;
+      cameras[i].ppy *= compose_work_aspect;
+
+      // Update corner and size
+      Size sz = full_img_sizes[i];
+      if (std::abs(compose_scale - 1) > 1e-1) {
+        sz.width = cvRound(full_img_sizes[i].width * compose_scale);
+        sz.height = cvRound(full_img_sizes[i].height * compose_scale);
+      }
+
+      Mat K;
+      cameras[i].K().convertTo(K, CV_32F);
+      Rect roi = warper->warpRoi(sz, K, cameras[i].R);
+      corners[i] = roi.tl();
+      sizes[i] = roi.size();
+    }
+  }
+
+  if (!blender && !timelapse) {
+    blender = Blender::createDefault(blend_type, try_cuda);
+    Size dst_sz = resultRoi(corners, sizes).size();
+    float blend_width =
+        sqrt(static_cast<float>(dst_sz.area())) * blend_strength / 100.f;
+    if (blend_width < 1.f)
+      blender = Blender::createDefault(Blender::NO, try_cuda);
+    else if (blend_type == Blender::MULTI_BAND) {
+      auto* mb = dynamic_cast<MultiBandBlender*>(blender.get());
+      mb->setNumBands(static_cast<int>(ceil(log(blend_width) / log(2.)) - 1.));
+      LOGLN("Multi-band blender, number of bands: " << mb->numBands());
+    } else if (blend_type == Blender::FEATHER) {
+      auto* fb = dynamic_cast<FeatherBlender*>(blender.get());
+      fb->setSharpness(1.f / blend_width);
+      LOGLN("Feather blender, sharpness: " << fb->sharpness());
+    }
+    blender->prepare(corners, sizes);
+  } else if (!timelapser && timelapse) {
+    timelapser = Timelapser::createDefault(timelapse_type);
+    timelapser->initialize(corners, sizes);
+  }
+
+#pragma omp parallel for
   for (int img_idx = 0; img_idx < num_images; ++img_idx) {
     //    LOGLN("Compositing image #" << indices[img_idx] + 1);
 
     // Read image and resize it if necessary
     // full_img = imread(samples::findFile(img_names[img_idx]));
-    if (!is_compose_scale_set) {
-      if (compose_megapix > 0)
-        compose_scale = min(
-            1.0, sqrt(compose_megapix * 1e6 / full_img[img_idx].size().area()));
-      is_compose_scale_set = true;
-
-      // Compute relative scales
-      // compose_seam_aspect = compose_scale / seam_scale;
-      compose_work_aspect = compose_scale / work_scale;
-
-      // Update warped image scale
-      warped_image_scale *= static_cast<float>(compose_work_aspect);
-      warper = warper_creator->create(warped_image_scale);
-
-      // Update corners and sizes
-      for (int i = 0; i < num_images; ++i) {
-        // Update intrinsics
-        cameras[i].focal *= compose_work_aspect;
-        cameras[i].ppx *= compose_work_aspect;
-        cameras[i].ppy *= compose_work_aspect;
-
-        // Update corner and size
-        Size sz = full_img_sizes[i];
-        if (std::abs(compose_scale - 1) > 1e-1) {
-          sz.width = cvRound(full_img_sizes[i].width * compose_scale);
-          sz.height = cvRound(full_img_sizes[i].height * compose_scale);
-        }
-
-        Mat K;
-        cameras[i].K().convertTo(K, CV_32F);
-        Rect roi = warper->warpRoi(sz, K, cameras[i].R);
-        corners[i] = roi.tl();
-        sizes[i] = roi.size();
-      }
-    }
     if (abs(compose_scale - 1) > 1e-1)
       resize(full_img[img_idx], img[img_idx], Size(), compose_scale,
              compose_scale, INTER_LINEAR_EXACT);
@@ -866,30 +891,7 @@ int main(int argc, char* argv[]) {
     resize(dilated_mask, seam_mask, mask_warped.size(), 0, 0,
            INTER_LINEAR_EXACT);
     mask_warped = seam_mask & mask_warped;
-
-    if (!blender && !timelapse) {
-      blender = Blender::createDefault(blend_type, try_cuda);
-      Size dst_sz = resultRoi(corners, sizes).size();
-      float blend_width =
-          sqrt(static_cast<float>(dst_sz.area())) * blend_strength / 100.f;
-      if (blend_width < 1.f)
-        blender = Blender::createDefault(Blender::NO, try_cuda);
-      else if (blend_type == Blender::MULTI_BAND) {
-        MultiBandBlender* mb = dynamic_cast<MultiBandBlender*>(blender.get());
-        mb->setNumBands(
-            static_cast<int>(ceil(log(blend_width) / log(2.)) - 1.));
-        LOGLN("Multi-band blender, number of bands: " << mb->numBands());
-      } else if (blend_type == Blender::FEATHER) {
-        FeatherBlender* fb = dynamic_cast<FeatherBlender*>(blender.get());
-        fb->setSharpness(1.f / blend_width);
-        LOGLN("Feather blender, sharpness: " << fb->sharpness());
-      }
-      blender->prepare(corners, sizes);
-    } else if (!timelapser && timelapse) {
-      timelapser = Timelapser::createDefault(timelapse_type);
-      timelapser->initialize(corners, sizes);
-    }
-
+    
     // Blend the current image
     if (timelapse) {
       timelapser->process(img_warped_s, Mat::ones(img_warped_s.size(), CV_8UC1),
@@ -920,7 +922,8 @@ int main(int argc, char* argv[]) {
     imwrite(result_name, result);
   }
 
-  LOGLN("Finished, total time: "
-        << ((getTickCount() - app_start_time) / getTickFrequency()) << " sec");
+  std::cout << "Finished, total time: "
+            << ((getTickCount() - app_start_time) / getTickFrequency())
+            << " sec" << std::endl;
   return 0;
 }
