@@ -2,10 +2,8 @@
 #include <iostream>
 #include <opencv2/core/utility.hpp>
 #include <string>
-#include "opencv2/highgui.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/opencv_modules.hpp"
-#include "opencv2/stitching/detail/autocalib.hpp"
 #include "opencv2/stitching/detail/blenders.hpp"
 #include "opencv2/stitching/detail/camera.hpp"
 #include "opencv2/stitching/detail/exposure_compensate.hpp"
@@ -352,9 +350,27 @@ int main(int argc, char* argv[]) {
   bool is_work_scale_set = false, is_seam_scale_set = false,
        is_compose_scale_set = false;
 
-  LOGLN("Finding features...");
+  LOGLN("Loading images...");
 #if ENABLE_LOG
   int64 t = getTickCount();
+#endif
+
+  vector<Mat> full_img(num_images), img(num_images);
+  vector<Size> full_img_sizes(num_images);
+  for (int i = 0; i < num_images; ++i) {
+    full_img[i] = imread(samples::findFile(img_names[i]));
+    if (full_img[i].empty()) {
+      LOGLN("Can't open image " << img_names[i]);
+      // return -1;
+    }
+    full_img_sizes[i] = full_img[i].size();
+  }
+  LOGLN("Loading image, time: " << ((getTickCount() - t) / getTickFrequency())
+                                << " sec");
+
+  LOGLN("Finding features...");
+#if ENABLE_LOG
+  t = getTickCount();
 #endif
 
 #if (CV_VERSION_MAJOR >= 4)
@@ -394,56 +410,51 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
-  Mat full_img, img;
   vector<ImageFeatures> features(num_images);
   vector<Mat> images(num_images);
-  vector<Size> full_img_sizes(num_images);
   double seam_work_aspect = 1;
 
+#pragma omp parallel for
   for (int i = 0; i < num_images; ++i) {
-    full_img = imread(samples::findFile(img_names[i]));
-    full_img_sizes[i] = full_img.size();
-
-    if (full_img.empty()) {
-      LOGLN("Can't open image " << img_names[i]);
-      return -1;
-    }
     if (work_megapix < 0) {
-      img = full_img;
+      img[i] = full_img[i];
       work_scale = 1;
       is_work_scale_set = true;
     } else {
       if (!is_work_scale_set) {
         work_scale =
-            min(1.0, sqrt(work_megapix * 1e6 / full_img.size().area()));
+            min(1.0, sqrt(work_megapix * 1e6 / full_img[i].size().area()));
         is_work_scale_set = true;
       }
-      resize(full_img, img, Size(), work_scale, work_scale, INTER_LINEAR_EXACT);
+      resize(full_img[i], img[i], Size(), work_scale, work_scale,
+             INTER_LINEAR_EXACT);
     }
     if (!is_seam_scale_set) {
-      seam_scale = min(1.0, sqrt(seam_megapix * 1e6 / full_img.size().area()));
+      seam_scale =
+          min(1.0, sqrt(seam_megapix * 1e6 / full_img[i].size().area()));
       seam_work_aspect = seam_scale / work_scale;
       is_seam_scale_set = true;
     }
 
 #if (CV_VERSION_MAJOR >= 4)
-    computeImageFeatures(finder, img, features[i]);
+    computeImageFeatures(finder, img[i], features[i]);
 #else
-    (*finder)(img, features[i]);
+    (*finder)(img[i], features[i]);
 #endif
     features[i].img_idx = i;
     //    LOGLN("Features in image #" << i + 1 << ": "
     //                                << features[i].keypoints.size());
 
-    resize(full_img, img, Size(), seam_scale, seam_scale, INTER_LINEAR_EXACT);
-    images[i] = img.clone();
+    resize(full_img[i], img[i], Size(), seam_scale, seam_scale,
+           INTER_LINEAR_EXACT);
+    images[i] = img[i].clone();
+    // full_img.release();
+    // img.release();
   }
 
 #if (CV_VERSION_MAJOR < 4)
   finder->collectGarbage();
 #endif
-  full_img.release();
-  img.release();
 
   LOGLN("Finding features, time: "
         << ((getTickCount() - t) / getTickFrequency()) << " sec");
@@ -481,10 +492,10 @@ int main(int argc, char* argv[]) {
   vector<Mat> img_subset;
   vector<String> img_names_subset;
   vector<Size> full_img_sizes_subset;
-  for (size_t i = 0; i < indices.size(); ++i) {
-    img_names_subset.push_back(img_names[indices[i]]);
-    img_subset.push_back(images[indices[i]]);
-    full_img_sizes_subset.push_back(full_img_sizes[indices[i]]);
+  for (auto index : indices) {
+    img_names_subset.push_back(img_names[index]);
+    img_subset.push_back(images[index]);
+    full_img_sizes_subset.push_back(full_img_sizes[index]);
   }
 
   images = img_subset;
@@ -708,6 +719,9 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
+  for (int i = 0; i < num_images; ++i) {
+    LOGLN(images_warped[i].size() << " " << masks_warped[i].size());
+  }
   compensator->feed(corners, images_warped, masks_warped);
 
   LOGLN("Compensating exposure, time: "
@@ -778,11 +792,11 @@ int main(int argc, char* argv[]) {
     //    LOGLN("Compositing image #" << indices[img_idx] + 1);
 
     // Read image and resize it if necessary
-    full_img = imread(samples::findFile(img_names[img_idx]));
+    // full_img = imread(samples::findFile(img_names[img_idx]));
     if (!is_compose_scale_set) {
       if (compose_megapix > 0)
-        compose_scale =
-            min(1.0, sqrt(compose_megapix * 1e6 / full_img.size().area()));
+        compose_scale = min(
+            1.0, sqrt(compose_megapix * 1e6 / full_img[img_idx].size().area()));
       is_compose_scale_set = true;
 
       // Compute relative scales
@@ -815,19 +829,19 @@ int main(int argc, char* argv[]) {
       }
     }
     if (abs(compose_scale - 1) > 1e-1)
-      resize(full_img, img, Size(), compose_scale, compose_scale,
-             INTER_LINEAR_EXACT);
+      resize(full_img[img_idx], img[img_idx], Size(), compose_scale,
+             compose_scale, INTER_LINEAR_EXACT);
     else
-      img = full_img;
-    full_img.release();
-    Size img_size = img.size();
+      img[img_idx] = full_img[img_idx];
+    // full_img.release();
+    Size img_size = img[img_idx].size();
 
     Mat K;
     cameras[img_idx].K().convertTo(K, CV_32F);
 
     // Warp the current image
-    warper->warp(img, K, cameras[img_idx].R, INTER_LINEAR, BORDER_REFLECT,
-                 img_warped);
+    warper->warp(img[img_idx], K, cameras[img_idx].R, INTER_LINEAR,
+                 BORDER_REFLECT, img_warped);
 
     // Warp the current image mask
     mask.create(img_size, CV_8U);
@@ -840,7 +854,7 @@ int main(int argc, char* argv[]) {
 
     img_warped.convertTo(img_warped_s, CV_16S);
     img_warped.release();
-    img.release();
+    // img.release();
     mask.release();
 
     dilate(masks_warped[img_idx], dilated_mask, Mat());

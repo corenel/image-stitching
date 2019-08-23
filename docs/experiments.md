@@ -4,7 +4,7 @@
 
 CPU
 
-|                       | 0.1M pixels (ms) | 0.05M pixels (ms) | 0.01M pixels (ms) |
+|                       | 0.1M pixels (s)  | 0.05M pixels (s)  | 0.01M pixels (s)  |
 | --------------------- | ---------------- | ----------------- | ----------------- |
 | Finding features      | 1.06047          | 1.07069           | 1.05935           |
 | Pairwise matching     | 0.960332         | 0.956351          | 0.976539          |
@@ -19,14 +19,14 @@ CPU
 
 CPU
 
-|              | no (ms) | gc color (ms) | gc colorgrad (ms) | voronoi (ms) |
+|              | no (s)  | gc color (s)  | gc colorgrad (s)  | voronoi (s)  |
 | ------------ | ------- | ------------- | ----------------- | ------------ |
 | Finding seam | N/A     | 8.75229       | 14.0364           | 0.0313928    |
 | **Total**    | 3.31363 | 12.1075       | 17.3814           | 3.35101      |
 
 ### CPU vs GPU
 
-|                       | CPU (ms)  | GPU w/ CPU seam (ms) |
+|                       | CPU (s)   | GPU w/ CPU seam (s) |
 | --------------------- | --------- | -------------------- |
 | Finding features      | 1.06047   | 0.313686             |
 | Pairwise matching     | 0.960332  | 0.743778             |
@@ -37,4 +37,8 @@ CPU
 | Compositing           | 0.739655  | 0.169609             |
 | **Total**             | 12.1026   | 10.23128             |
 
+## References
 
+- [High level stitching API (Stitcher class) - OpenCV](https://docs.opencv.org/master/d8/d19/tutorial_stitcher.html)
+- [Images stitching - OpenCV](https://docs.opencv.org/4.1.1/d1/d46/group__stitching.html)
+- [Fast Panorama Stitching](https://software.intel.com/en-us/articles/fast-panorama-stitching)

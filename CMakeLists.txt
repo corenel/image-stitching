@@ -15,6 +15,9 @@ message(STATUS "    version: ${OpenCV_VERSION}")
 message(STATUS "    libraries: ${OpenCV_LIBS}")
 message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 
+# OpemMP for parallel computing
+find_package(OpenMP)
+
 include_directories(
     include
     ${OpenCV_INCLUDE_DIRS}
@@ -34,4 +37,5 @@ add_executable(
 target_link_libraries(
     ${PROJECT_NAME}
     ${OpenCV_LIBS}
+    OpenMP::OpenMP_CXX
 )
