@@ -34,8 +34,18 @@ int main(int argc, char* argv[]) {
   }
 
   int num_images = static_cast<int>(img_names.size());
+  std::vector<cv::Mat> full_img(num_images);
+  for (int i = 0; i < num_images; ++i) {
+    full_img[i] = cv::imread(cv::samples::findFile(img_names[i]));
+    if (full_img[i].empty()) {
+      std::cerr << "Can't open image " << img_names[i] << std::endl;
+      return -1;
+    }
+  }
+
+  cv::Mat result, result_mask;
   Stitcher s(num_images);
-  s.calibrate(img_names, cv::Mat(), cv::Mat());
+  s.calibrate(full_img, result, result_mask);
 
   return 0;
 }

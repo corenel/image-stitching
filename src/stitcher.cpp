@@ -5,6 +5,10 @@ Stitcher::Stitcher(const int& num_images_given) : num_images(num_images_given) {
   if (preview) {
     compose_megapix = 0.6;
   }
+
+  img.resize(num_images);
+  full_img_sizes.resize(num_images);
+
   corners.resize(num_images);
   masks_warped.resize(num_images);
   images_warped.resize(num_images);
@@ -19,13 +23,14 @@ Stitcher::Stitcher(const int& num_images_given) : num_images(num_images_given) {
   mask_warped.resize(num_images);
 }
 
-int Stitcher::calibrate(const std::vector<std::string>& img_names, cv::Mat result, cv::Mat result_mask) {
+int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
+                        cv::Mat& result_mask) {
 #if ENABLE_LOG
   int64 app_start_time = cv::getTickCount();
 #endif
 
   // Check if have enough images
-  if (num_images != static_cast<int>(img_names.size())) {
+  if (num_images != static_cast<int>(full_img.size())) {
     LOGLN("Invalid number of images");
     return -1;
   } else if (num_images < 2) {
@@ -34,29 +39,14 @@ int Stitcher::calibrate(const std::vector<std::string>& img_names, cv::Mat resul
   }
 
   // Loading images
-#if ENABLE_LOG
-  LOGLN("Loading images...");
-  int64 t = cv::getTickCount();
-#endif
-  std::vector<cv::Mat> full_img(num_images), img(num_images);
-  std::vector<cv::Size> full_img_sizes(num_images);
   for (int i = 0; i < num_images; ++i) {
-    full_img[i] = cv::imread(cv::samples::findFile(img_names[i]));
-    if (full_img[i].empty()) {
-      LOGLN("Can't open image " << img_names[i]);
-      return -1;
-    }
     full_img_sizes[i] = full_img[i].size();
   }
-#if ENABLE_LOG
-  LOGLN("Loading image, time: "
-        << ((cv::getTickCount() - t) / cv::getTickFrequency()) << " sec");
-#endif
 
   // finding features
 #if ENABLE_LOG
   LOGLN("finding features...");
-  t = cv::getTickCount();
+  auto t = cv::getTickCount();
 #endif
 
 #if (CV_VERSION_MAJOR >= 4)
@@ -560,10 +550,16 @@ int Stitcher::calibrate(const std::vector<std::string>& img_names, cv::Mat resul
 
   blender->blend(result, result_mask);
 #if ENABLE_LOG
-  LOGLN("Compositing, time: " << ((cv::getTickCount() - t) / cv::getTickFrequency())
-                              << " sec");
+  LOGLN("Compositing, time: "
+        << ((cv::getTickCount() - t) / cv::getTickFrequency()) << " sec");
   LOGLN("Finished, total time: "
-        << ((cv::getTickCount() - app_start_time) / cv::getTickFrequency()) << " sec");
+        << ((cv::getTickCount() - app_start_time) / cv::getTickFrequency())
+        << " sec");
 #endif
+  return 0;
+}
+
+int Stitcher::process(const std::vector<cv::Mat>& images, cv::Mat& result,
+                      cv::Mat& result_mask) {
   return 0;
 }

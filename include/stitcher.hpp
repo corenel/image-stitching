@@ -24,8 +24,11 @@
 
 class Stitcher {
  public:
-  Stitcher(const int& num_images);
-  int calibrate(const std::vector<std::string>& img_names, cv::Mat result, cv::Mat result_mask);
+  explicit Stitcher(const int& num_images);
+  int calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
+                cv::Mat& result_mask);
+  int process(const std::vector<cv::Mat>& images, cv::Mat& result,
+              cv::Mat& result_mask);
 
  private:
   int num_images;
@@ -52,8 +55,6 @@ class Stitcher {
   std::string ba_refine_mask = "xxxxx";
   bool do_wave_correct = true;
   cv::detail::WaveCorrectKind wave_correct = cv::detail::WAVE_CORRECT_HORIZ;
-  bool save_graph = false;
-  std::string save_graph_to;
   std::string warp_type = "cylindrical";
   int expos_comp_type = cv::detail::ExposureCompensator::GAIN;
   int expos_comp_nr_feeds = 1;
@@ -64,6 +65,9 @@ class Stitcher {
   int blend_type = cv::detail::Blender::MULTI_BAND;
   float blend_strength = 5;
   int range_width = -1;
+
+  std::vector<cv::Mat> img;
+  std::vector<cv::Size> full_img_sizes;
 
   std::vector<cv::Point> corners;
   std::vector<cv::UMat> masks_warped;
