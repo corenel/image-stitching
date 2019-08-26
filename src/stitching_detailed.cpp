@@ -475,6 +475,8 @@ int main(int argc, char* argv[]) {
         makePtr<BestOf2NearestRangeMatcher>(range_width, try_cuda, match_conf);
 
   UMat matchMask(features.size(), features.size(), CV_8U, Scalar(0));
+
+#pragma omp parallel for
   for (int i = 0; i < num_images - 1; ++i) {
     matchMask.getMat(ACCESS_READ).at<char>(i, i + 1) = 1;
   }
@@ -493,20 +495,19 @@ int main(int argc, char* argv[]) {
   }
 
   // Leave only images we are sure are from the same panorama
-  vector<int> indices =
-      leaveBiggestComponent(features, pairwise_matches, conf_thresh);
-  vector<Mat> img_subset;
-  vector<String> img_names_subset;
-  vector<Size> full_img_sizes_subset;
-  for (auto index : indices) {
-    img_names_subset.push_back(img_names[index]);
-    img_subset.push_back(images[index]);
-    full_img_sizes_subset.push_back(full_img_sizes[index]);
-  }
-
-  images = img_subset;
-  img_names = img_names_subset;
-  full_img_sizes = full_img_sizes_subset;
+  //  vector<int> indices =
+  //      leaveBiggestComponent(features, pairwise_matches, conf_thresh);
+  //  vector<Mat> img_subset;
+  //  vector<String> img_names_subset;
+  //  vector<Size> full_img_sizes_subset;
+  //  for (auto index : indices) {
+  //    img_names_subset.push_back(img_names[index]);
+  //    img_subset.push_back(images[index]);
+  //    full_img_sizes_subset.push_back(full_img_sizes[index]);
+  //  }
+  //  images = img_subset;
+  //  img_names = img_names_subset;
+  //  full_img_sizes = full_img_sizes_subset;
 
   // Check if we still have enough images
   num_images = static_cast<int>(img_names.size());
@@ -535,9 +536,6 @@ int main(int argc, char* argv[]) {
     Mat R;
     camera.R.convertTo(R, CV_32F);
     camera.R = R;
-    //    LOGLN("Initial camera intrinsics #" << indices[i] + 1 << ":\nK:\n"
-    //                                        << cameras[i].K() << "\nR:\n"
-    //                                        << cameras[i].R);
   }
 
   Ptr<detail::BundleAdjusterBase> adjuster;
@@ -568,16 +566,11 @@ int main(int argc, char* argv[]) {
   }
 
   // Find median focal length
-
   vector<double> focals;
   focals.reserve(cameras.size());
-  for (const auto& camera : cameras) {
-    //    LOGLN("Camera #" << indices[i] + 1 << ":\nK:\n"
-    //                     << cameras[i].K() << "\nR:\n"
-    //                     << cameras[i].R);
-    focals.push_back(camera.focal);
+  for (size_t i = 0; i < cameras.size(); ++i) {
+    focals[i] = cameras[i].focal;
   }
-
   sort(focals.begin(), focals.end());
   float warped_image_scale;
   if (focals.size() % 2 == 1)
@@ -594,7 +587,9 @@ int main(int argc, char* argv[]) {
       rmats.push_back(camera.R.clone());
     }
     waveCorrect(rmats, wave_correct);
-    for (size_t i = 0; i < cameras.size(); ++i) cameras[i].R = rmats[i];
+    for (size_t i = 0; i < cameras.size(); ++i) {
+      cameras[i].R = rmats[i];
+    }
   }
   LOGLN("Estimating, time: " << ((getTickCount() - t) / getTickFrequency())
                              << " sec");
@@ -611,6 +606,7 @@ int main(int argc, char* argv[]) {
   vector<UMat> masks(num_images);
 
   // Prepare images masks
+#pragma omp parallel for
   for (int i = 0; i < num_images; ++i) {
     masks[i].create(images[i].size(), CV_8U);
     masks[i].setTo(Scalar::all(255));
@@ -672,6 +668,7 @@ int main(int argc, char* argv[]) {
   }
 
   vector<Ptr<RotationWarper>> warpers(num_images);
+#pragma omp parallel for
   for (int i = 0; i < num_images; ++i) {
     warpers[i] = warper_creator->create(
         static_cast<float>(warped_image_scale * seam_work_aspect));
@@ -812,11 +809,13 @@ int main(int argc, char* argv[]) {
     // Update warped image scale
     warped_image_scale *= static_cast<float>(compose_work_aspect);
 
+#pragma omp parallel for
     for (int img_idx = 0; img_idx < num_images; ++img_idx) {
       warpers[img_idx] = warper_creator->create(warped_image_scale);
     }
 
     // Update corners and sizes
+#pragma omp parallel for
     for (int i = 0; i < num_images; ++i) {
       // Update intrinsics
       cameras[i].focal *= compose_work_aspect;
