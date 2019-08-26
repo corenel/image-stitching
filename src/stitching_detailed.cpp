@@ -671,10 +671,17 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  Ptr<RotationWarper> warper = warper_creator->create(
-      static_cast<float>(warped_image_scale * seam_work_aspect));
-
+  vector<Ptr<RotationWarper>> warpers(num_images);
   for (int i = 0; i < num_images; ++i) {
+    warpers[i] = warper_creator->create(
+        static_cast<float>(warped_image_scale * seam_work_aspect));
+  }
+
+  vector<UMat> images_warped_f(num_images);
+#pragma omp parallel for
+  for (int i = 0; i < num_images; ++i) {
+    Ptr<RotationWarper> warper = warper_creator->create(
+        static_cast<float>(warped_image_scale * seam_work_aspect));
     Mat_<float> K;
     cameras[i].K().convertTo(K, CV_32F);
     auto swa = (float)seam_work_aspect;
@@ -683,17 +690,14 @@ int main(int argc, char* argv[]) {
     K(1, 1) *= swa;
     K(1, 2) *= swa;
 
-    corners[i] = warper->warp(images[i], K, cameras[i].R, INTER_LINEAR,
-                              BORDER_REFLECT, images_warped[i]);
+    corners[i] = warpers[i]->warp(images[i], K, cameras[i].R, INTER_LINEAR,
+                                  BORDER_REFLECT, images_warped[i]);
     sizes[i] = images_warped[i].size();
 
-    warper->warp(masks[i], K, cameras[i].R, INTER_NEAREST, BORDER_CONSTANT,
-                 masks_warped[i]);
-  }
-
-  vector<UMat> images_warped_f(num_images);
-  for (int i = 0; i < num_images; ++i)
+    warpers[i]->warp(masks[i], K, cameras[i].R, INTER_NEAREST, BORDER_CONSTANT,
+                     masks_warped[i]);
     images_warped[i].convertTo(images_warped_f[i], CV_32F);
+  }
 
   LOGLN("Warping images, time: " << ((getTickCount() - t) / getTickFrequency())
                                  << " sec");
@@ -787,8 +791,9 @@ int main(int argc, char* argv[]) {
   t = getTickCount();
 #endif
 
-  Mat img_warped, img_warped_s;
-  Mat dilated_mask, seam_mask, mask, mask_warped;
+  vector<Mat> img_warped(num_images), img_warped_s(num_images);
+  vector<Mat> dilated_mask(num_images), seam_mask(num_images), mask(num_images),
+      mask_warped(num_images);
   Ptr<Blender> blender;
   Ptr<Timelapser> timelapser;
   // double compose_seam_aspect = 1;
@@ -806,7 +811,10 @@ int main(int argc, char* argv[]) {
 
     // Update warped image scale
     warped_image_scale *= static_cast<float>(compose_work_aspect);
-    warper = warper_creator->create(warped_image_scale);
+
+    for (int img_idx = 0; img_idx < num_images; ++img_idx) {
+      warpers[img_idx] = warper_creator->create(warped_image_scale);
+    }
 
     // Update corners and sizes
     for (int i = 0; i < num_images; ++i) {
@@ -824,7 +832,7 @@ int main(int argc, char* argv[]) {
 
       Mat K;
       cameras[i].K().convertTo(K, CV_32F);
-      Rect roi = warper->warpRoi(sz, K, cameras[i].R);
+      Rect roi = warpers[i]->warpRoi(sz, K, cameras[i].R);
       corners[i] = roi.tl();
       sizes[i] = roi.size();
     }
@@ -870,31 +878,33 @@ int main(int argc, char* argv[]) {
     cameras[img_idx].K().convertTo(K, CV_32F);
 
     // Warp the current image
-    warper->warp(img[img_idx], K, cameras[img_idx].R, INTER_LINEAR,
-                 BORDER_REFLECT, img_warped);
+    warpers[img_idx]->warp(img[img_idx], K, cameras[img_idx].R, INTER_LINEAR,
+                           BORDER_REFLECT, img_warped[img_idx]);
 
     // Warp the current image mask
-    mask.create(img_size, CV_8U);
-    mask.setTo(Scalar::all(255));
-    warper->warp(mask, K, cameras[img_idx].R, INTER_NEAREST, BORDER_CONSTANT,
-                 mask_warped);
+    mask[img_idx].create(img_size, CV_8U);
+    mask[img_idx].setTo(Scalar::all(255));
+    warpers[img_idx]->warp(mask[img_idx], K, cameras[img_idx].R, INTER_NEAREST,
+                           BORDER_CONSTANT, mask_warped[img_idx]);
 
     // Compensate exposure
-    compensator->apply(img_idx, corners[img_idx], img_warped, mask_warped);
+    compensator->apply(img_idx, corners[img_idx], img_warped[img_idx],
+                       mask_warped[img_idx]);
 
-    img_warped.convertTo(img_warped_s, CV_16S);
-    img_warped.release();
+    img_warped[img_idx].convertTo(img_warped_s[img_idx], CV_16S);
+    // img_warped[img_idx].release();
     // img.release();
-    mask.release();
+    // mask.release();
 
-    dilate(masks_warped[img_idx], dilated_mask, Mat());
-    resize(dilated_mask, seam_mask, mask_warped.size(), 0, 0,
-           INTER_LINEAR_EXACT);
-    mask_warped = seam_mask & mask_warped;
-    
+    dilate(masks_warped[img_idx], dilated_mask[img_idx], Mat());
+    resize(dilated_mask[img_idx], seam_mask[img_idx],
+           mask_warped[img_idx].size(), 0, 0, INTER_LINEAR_EXACT);
+    mask_warped[img_idx] = seam_mask[img_idx] & mask_warped[img_idx];
+
     // Blend the current image
     if (timelapse) {
-      timelapser->process(img_warped_s, Mat::ones(img_warped_s.size(), CV_8UC1),
+      timelapser->process(img_warped_s[img_idx],
+                          Mat::ones(img_warped_s[img_idx].size(), CV_8UC1),
                           corners[img_idx]);
       String fixedFileName;
       size_t pos_s = String(img_names[img_idx]).find_last_of("/\\");
@@ -908,7 +918,8 @@ int main(int argc, char* argv[]) {
       }
       imwrite(fixedFileName, timelapser->getDst());
     } else {
-      blender->feed(img_warped_s, mask_warped, corners[img_idx]);
+      blender->feed(img_warped_s[img_idx], mask_warped[img_idx],
+                    corners[img_idx]);
     }
   }
 
