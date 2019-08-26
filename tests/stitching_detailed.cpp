@@ -10,7 +10,6 @@
 #include "opencv2/stitching/detail/matchers.hpp"
 #include "opencv2/stitching/detail/motion_estimators.hpp"
 #include "opencv2/stitching/detail/seam_finders.hpp"
-#include "opencv2/stitching/detail/timelapsers.hpp"
 #include "opencv2/stitching/detail/warpers.hpp"
 #include "opencv2/stitching/warpers.hpp"
 
@@ -113,9 +112,6 @@ static void printUsage() {
           "      Blending strength from [0,100] range. The default is 5.\n"
           "  --output <result_img>\n"
           "      The default is 'result.jpg'.\n"
-          "  --timelapse (as_is|crop) \n"
-          "      Output warped images separately as frames of a time lapse "
-          "movie, with 'fixed_' prepended to input file names.\n"
           "  --rangewidth <int>\n"
           "      uses range_width to limit number of images to match with.\n";
 }
@@ -149,10 +145,8 @@ int expos_comp_block_size = 32;
 float match_conf = 0.3f;
 string seam_find_type = "dp_colorgrad";
 int blend_type = Blender::MULTI_BAND;
-int timelapse_type = Timelapser::AS_IS;
 float blend_strength = 5;
 string result_name = "result.jpg";
-bool timelapse = false;
 int range_width = -1;
 
 static int parseCmdArgs(int argc, char** argv) {
@@ -298,18 +292,6 @@ static int parseCmdArgs(int argc, char** argv) {
         return -1;
       }
       i++;
-    } else if (string(argv[i]) == "--timelapse") {
-      timelapse = true;
-
-      if (string(argv[i + 1]) == "as_is")
-        timelapse_type = Timelapser::AS_IS;
-      else if (string(argv[i + 1]) == "crop")
-        timelapse_type = Timelapser::CROP;
-      else {
-        cout << "Bad timelapse method\n";
-        return -1;
-      }
-      i++;
     } else if (string(argv[i]) == "--rangewidth") {
       range_width = atoi(argv[i + 1]);
       i++;
@@ -452,7 +434,6 @@ int main(int argc, char* argv[]) {
     // full_img.release();
     // img.release();
   }
-
 #if (CV_VERSION_MAJOR < 4)
   finder->collectGarbage();
 #endif
@@ -493,21 +474,6 @@ int main(int argc, char* argv[]) {
     ofstream f(save_graph_to.c_str());
     f << matchesGraphAsString(img_names, pairwise_matches, conf_thresh);
   }
-
-  // Leave only images we are sure are from the same panorama
-  //  vector<int> indices =
-  //      leaveBiggestComponent(features, pairwise_matches, conf_thresh);
-  //  vector<Mat> img_subset;
-  //  vector<String> img_names_subset;
-  //  vector<Size> full_img_sizes_subset;
-  //  for (auto index : indices) {
-  //    img_names_subset.push_back(img_names[index]);
-  //    img_subset.push_back(images[index]);
-  //    full_img_sizes_subset.push_back(full_img_sizes[index]);
-  //  }
-  //  images = img_subset;
-  //  img_names = img_names_subset;
-  //  full_img_sizes = full_img_sizes_subset;
 
   // Check if we still have enough images
   num_images = static_cast<int>(img_names.size());
@@ -613,7 +579,6 @@ int main(int argc, char* argv[]) {
   }
 
   // Warp images and their masks
-
   Ptr<WarperCreator> warper_creator;
 #ifdef HAVE_OPENCV_CUDAWARPING
   if (try_cuda && cuda::getCudaEnabledDeviceCount() > 0) {
@@ -792,8 +757,6 @@ int main(int argc, char* argv[]) {
   vector<Mat> dilated_mask(num_images), seam_mask(num_images), mask(num_images),
       mask_warped(num_images);
   Ptr<Blender> blender;
-  Ptr<Timelapser> timelapser;
-  // double compose_seam_aspect = 1;
   double compose_work_aspect = 1;
 
   if (!is_compose_scale_set) {
@@ -803,7 +766,6 @@ int main(int argc, char* argv[]) {
     is_compose_scale_set = true;
 
     // Compute relative scales
-    // compose_seam_aspect = compose_scale / seam_scale;
     compose_work_aspect = compose_scale / work_scale;
 
     // Update warped image scale
@@ -837,7 +799,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  if (!blender && !timelapse) {
+  if (!blender) {
     blender = Blender::createDefault(blend_type, try_cuda);
     Size dst_sz = resultRoi(corners, sizes).size();
     float blend_width =
@@ -854,23 +816,16 @@ int main(int argc, char* argv[]) {
       LOGLN("Feather blender, sharpness: " << fb->sharpness());
     }
     blender->prepare(corners, sizes);
-  } else if (!timelapser && timelapse) {
-    timelapser = Timelapser::createDefault(timelapse_type);
-    timelapser->initialize(corners, sizes);
   }
 
 #pragma omp parallel for
   for (int img_idx = 0; img_idx < num_images; ++img_idx) {
-    //    LOGLN("Compositing image #" << indices[img_idx] + 1);
-
     // Read image and resize it if necessary
-    // full_img = imread(samples::findFile(img_names[img_idx]));
     if (abs(compose_scale - 1) > 1e-1)
       resize(full_img[img_idx], img[img_idx], Size(), compose_scale,
              compose_scale, INTER_LINEAR_EXACT);
     else
       img[img_idx] = full_img[img_idx];
-    // full_img.release();
     Size img_size = img[img_idx].size();
 
     Mat K;
@@ -891,9 +846,6 @@ int main(int argc, char* argv[]) {
                        mask_warped[img_idx]);
 
     img_warped[img_idx].convertTo(img_warped_s[img_idx], CV_16S);
-    // img_warped[img_idx].release();
-    // img.release();
-    // mask.release();
 
     dilate(masks_warped[img_idx], dilated_mask[img_idx], Mat());
     resize(dilated_mask[img_idx], seam_mask[img_idx],
@@ -901,36 +853,17 @@ int main(int argc, char* argv[]) {
     mask_warped[img_idx] = seam_mask[img_idx] & mask_warped[img_idx];
 
     // Blend the current image
-    if (timelapse) {
-      timelapser->process(img_warped_s[img_idx],
-                          Mat::ones(img_warped_s[img_idx].size(), CV_8UC1),
-                          corners[img_idx]);
-      String fixedFileName;
-      size_t pos_s = String(img_names[img_idx]).find_last_of("/\\");
-      if (pos_s == String::npos) {
-        fixedFileName = "fixed_" + img_names[img_idx];
-      } else {
-        fixedFileName =
-            "fixed_" +
-            String(img_names[img_idx])
-                .substr(pos_s + 1, String(img_names[img_idx]).length() - pos_s);
-      }
-      imwrite(fixedFileName, timelapser->getDst());
-    } else {
-      blender->feed(img_warped_s[img_idx], mask_warped[img_idx],
-                    corners[img_idx]);
-    }
+    blender->feed(img_warped_s[img_idx], mask_warped[img_idx],
+                  corners[img_idx]);
   }
 
-  if (!timelapse) {
-    Mat result, result_mask;
-    blender->blend(result, result_mask);
+  Mat result, result_mask;
+  blender->blend(result, result_mask);
 
-    LOGLN("Compositing, time: " << ((getTickCount() - t) / getTickFrequency())
-                                << " sec");
+  LOGLN("Compositing, time: " << ((getTickCount() - t) / getTickFrequency())
+                              << " sec");
 
-    imwrite(result_name, result);
-  }
+  imwrite(result_name, result);
 
   std::cout << "Finished, total time: "
             << ((getTickCount() - app_start_time) / getTickFrequency())

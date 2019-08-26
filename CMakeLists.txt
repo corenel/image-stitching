@@ -23,15 +23,16 @@ include_directories(
     ${OpenCV_INCLUDE_DIRS}
 )
 
-if(APPLE)
+if (APPLE)
     # Fix linking on macOS 10.14+. See https://stackoverflow.com/questions/54068035
     link_directories(/usr/local/lib)
     include_directories(/usr/local/include)
-endif()
+endif ()
 
 add_executable(
     ${PROJECT_NAME}
-    src/stitching_detailed.cpp
+    src/main.cpp
+    src/stitcher.cpp
 )
 
 target_link_libraries(
@@ -39,3 +40,14 @@ target_link_libraries(
     ${OpenCV_LIBS}
     OpenMP::OpenMP_CXX
 )
+
+#add_executable(
+#    test_${PROJECT_NAME}
+#    tests/stitching_detailed.cpp
+#)
+#
+#target_link_libraries(
+#    test_${PROJECT_NAME}
+#    ${OpenCV_LIBS}
+#    OpenMP::OpenMP_CXX
+#)
