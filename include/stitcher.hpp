@@ -24,7 +24,7 @@
 
 class Stitcher {
  public:
-  explicit Stitcher(const int& num_images);
+  explicit Stitcher(const int& num_images, cv::Size image_size);
   int calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
                 cv::Mat& result_mask);
   int process(const std::vector<cv::Mat>& images, cv::Mat& result,
@@ -32,6 +32,8 @@ class Stitcher {
 
  private:
   int num_images;
+  cv::Size image_size;
+
   bool preview = false;
   bool try_cuda = false;
   double work_megapix = 0.08;
@@ -40,6 +42,7 @@ class Stitcher {
   double work_scale = 1;
   double seam_scale = 1;
   double compose_scale = 1;
+  double compose_work_aspect = 1;
   bool is_work_scale_set = false;
   bool is_seam_scale_set = false;
   bool is_compose_scale_set = false;
@@ -66,12 +69,32 @@ class Stitcher {
   float blend_strength = 5;
   int range_width = -1;
 
+#if (CV_VERSION_MAJOR >= 4)
+  cv::Ptr<cv::Feature2D> finder;
+#else
+  cv::Ptr<cv::detail::FeaturesFinder> finder;
+#endif
+
+  std::vector<cv::detail::ImageFeatures> features;
+  std::vector<cv::Mat> images;
+  double seam_work_aspect = 1;
+
+  cv::Ptr<cv::detail::FeaturesMatcher> matcher;
+  std::vector<cv::detail::CameraParams> cameras;
+  cv::Ptr<cv::detail::Estimator> estimator;
+  cv::Ptr<cv::detail::BundleAdjusterBase> adjuster;
+  cv::Ptr<cv::WarperCreator> warper_creator;
+  std::vector<cv::Ptr<cv::detail::RotationWarper>> warpers;
+  cv::Ptr<cv::detail::ExposureCompensator> compensator;
+  cv::Ptr<cv::detail::SeamFinder> seam_finder;
+
   std::vector<cv::Mat> img;
   std::vector<cv::Size> full_img_sizes;
 
   std::vector<cv::Point> corners;
   std::vector<cv::UMat> masks_warped;
   std::vector<cv::UMat> images_warped;
+  std::vector<cv::UMat> images_warped_f;
   std::vector<cv::Size> sizes;
   std::vector<cv::UMat> masks;
 

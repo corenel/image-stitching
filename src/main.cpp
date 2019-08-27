@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
     return retval;
   }
 
+  // Load images
   int num_images = static_cast<int>(img_names.size());
   std::vector<cv::Mat> full_img(num_images);
   for (int i = 0; i < num_images; ++i) {
@@ -43,9 +44,16 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  // Process
+  LOGLN("------- Calibrating -------");
   cv::Mat result, result_mask;
-  Stitcher s(num_images);
+  Stitcher s(num_images, full_img[0].size());
   s.calibrate(full_img, result, result_mask);
+  cv::imwrite("result_0.jpg", result);
+
+  LOGLN("------- Processing -------");
+  s.process(full_img, result, result_mask);
+  cv::imwrite("result_1.jpg", result);
 
   return 0;
 }
