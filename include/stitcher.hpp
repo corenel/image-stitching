@@ -31,79 +31,77 @@ class Stitcher {
               cv::Mat& result_mask);
 
  private:
-  int num_images;
-  cv::Size image_size;
+  int num_images_;
+  cv::Size image_size_;
 
-  bool preview = false;
-  bool try_cuda = false;
-  double work_megapix = 0.08;
-  double seam_megapix = 0.08;
-  double compose_megapix = -1;
-  double work_scale = 1;
-  double seam_scale = 1;
-  double compose_scale = 1;
-  double compose_work_aspect = 1;
-  bool is_work_scale_set = false;
-  bool is_seam_scale_set = false;
-  bool is_compose_scale_set = false;
-  float conf_thresh = 0.5f;
+  bool preview_ = false;
+  bool try_cuda_ = false;
+  double work_megapix_ = 0.08;
+  double seam_megapix_ = 0.08;
+  double compose_megapix_ = -1;
+  double work_scale_ = 1;
+  double seam_scale_ = 1;
+  double compose_scale_ = 1;
+  double compose_work_aspect_ = 1;
+  bool is_work_scale_set_ = false;
+  bool is_seam_scale_set_ = false;
+  bool is_compose_scale_set_ = false;
+  float conf_thresh_ = 0.5f;
 #ifdef HAVE_OPENCV_XFEATURES2D
-  std::string features_type = "surf";
+  std::string features_type_ = "surf";
 #else
-  std::string features_type = "orb";
+  std::string features_type_ = "orb";
 #endif
-  std::string matcher_type = "homography";
-  std::string estimator_type = "homography";
-  std::string ba_cost_func = "ray";
-  std::string ba_refine_mask = "xxxxx";
-  bool do_wave_correct = true;
-  cv::detail::WaveCorrectKind wave_correct = cv::detail::WAVE_CORRECT_HORIZ;
-  std::string warp_type = "cylindrical";
-  int expos_comp_type = cv::detail::ExposureCompensator::GAIN;
-  int expos_comp_nr_feeds = 1;
-  int expos_comp_nr_filtering = 2;
-  int expos_comp_block_size = 32;
-  float match_conf = 0.3f;
-  std::string seam_find_type = "dp_colorgrad";
-  int blend_type = cv::detail::Blender::MULTI_BAND;
-  float blend_strength = 5;
-  int range_width = -1;
+  std::string matcher_type_ = "homography";
+  std::string estimator_type_ = "homography";
+  std::string ba_cost_func_ = "ray";
+  std::string ba_refine_mask_ = "xxxxx";
+  bool do_wave_correct_ = true;
+  cv::detail::WaveCorrectKind wave_correct_ = cv::detail::WAVE_CORRECT_HORIZ;
+  std::string warp_type_ = "cylindrical";
+  int expos_comp_type_ = cv::detail::ExposureCompensator::GAIN;
+  int expos_comp_nr_feeds_ = 1;
+  int expos_comp_nr_filtering_ = 2;
+  int expos_comp_block_size_ = 32;
+  float match_conf_ = 0.3f;
+  std::string seam_find_type_ = "dp_colorgrad";
+  int blend_type_ = cv::detail::Blender::MULTI_BAND;
+  float blend_strength_ = 5;
+  int range_width_ = -1;
 
 #if (CV_VERSION_MAJOR >= 4)
-  cv::Ptr<cv::Feature2D> finder;
+  cv::Ptr<cv::Feature2D> finder_;
 #else
-  cv::Ptr<cv::detail::FeaturesFinder> finder;
+  cv::Ptr<cv::detail::FeaturesFinder> finder_;
 #endif
 
-  std::vector<cv::detail::ImageFeatures> features;
-  std::vector<cv::Mat> images;
-  double seam_work_aspect = 1;
+  std::vector<cv::detail::ImageFeatures> features_;
+  std::vector<cv::Mat> images_;
+  double seam_work_aspect_ = 1;
 
-  cv::Ptr<cv::detail::FeaturesMatcher> matcher;
-  std::vector<cv::detail::CameraParams> cameras;
-  cv::Ptr<cv::detail::Estimator> estimator;
-  cv::Ptr<cv::detail::BundleAdjusterBase> adjuster;
-  cv::Ptr<cv::WarperCreator> warper_creator;
-  std::vector<cv::Ptr<cv::detail::RotationWarper>> warpers;
-  cv::Ptr<cv::detail::ExposureCompensator> compensator;
-  cv::Ptr<cv::detail::SeamFinder> seam_finder;
+  cv::Ptr<cv::detail::FeaturesMatcher> matcher_;
+  std::vector<cv::detail::CameraParams> cameras_;
+  cv::Ptr<cv::detail::Estimator> estimator_;
+  cv::Ptr<cv::detail::BundleAdjusterBase> adjuster_;
+  cv::Ptr<cv::WarperCreator> warper_creator_;
+  std::vector<cv::Ptr<cv::detail::RotationWarper>> warpers_;
+  cv::Ptr<cv::detail::ExposureCompensator> compensator_;
+  cv::Ptr<cv::detail::SeamFinder> seam_finder_;
 
-  std::vector<cv::Mat> img;
-  std::vector<cv::Size> full_img_sizes;
+  std::vector<cv::Mat> img_;
+  std::vector<cv::Point> corners_;
+  std::vector<cv::UMat> masks_warped_;
+  std::vector<cv::UMat> images_warped_;
+  std::vector<cv::UMat> images_warped_f_;
+  std::vector<cv::Size> sizes_;
+  std::vector<cv::UMat> masks_;
 
-  std::vector<cv::Point> corners;
-  std::vector<cv::UMat> masks_warped;
-  std::vector<cv::UMat> images_warped;
-  std::vector<cv::UMat> images_warped_f;
-  std::vector<cv::Size> sizes;
-  std::vector<cv::UMat> masks;
+  std::vector<cv::Mat> img_warped_;
+  std::vector<cv::Mat> img_warped_s_;
+  std::vector<cv::Mat> dilated_mask_;
+  std::vector<cv::Mat> seam_mask_;
+  std::vector<cv::Mat> mask_;
+  std::vector<cv::Mat> mask_warped_;
 
-  std::vector<cv::Mat> img_warped;
-  std::vector<cv::Mat> img_warped_s;
-  std::vector<cv::Mat> dilated_mask;
-  std::vector<cv::Mat> seam_mask;
-  std::vector<cv::Mat> mask;
-  std::vector<cv::Mat> mask_warped;
-
-  cv::Ptr<cv::detail::Blender> blender;
+  cv::Ptr<cv::detail::Blender> blender_;
 };
