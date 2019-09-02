@@ -36,8 +36,8 @@ class Stitcher {
 
   bool preview_ = false;
   bool try_cuda_ = false;
-  double work_megapix_ = 0.08;
-  double seam_megapix_ = 0.08;
+  double work_megapix_ = 0.6;
+  double seam_megapix_ = 0.1;
   double compose_megapix_ = -1;
   double work_scale_ = 1;
   double seam_scale_ = 1;
@@ -47,12 +47,14 @@ class Stitcher {
   bool is_seam_scale_set_ = false;
   bool is_compose_scale_set_ = false;
   float conf_thresh_ = 0.5f;
-#ifdef HAVE_OPENCV_XFEATURES2D
-  std::string features_type_ = "surf";
-#else
+//#ifdef HAVE_OPENCV_XFEATURES2D
+//  std::string features_type_ = "surf";
+//#else
   std::string features_type_ = "orb";
-#endif
-  std::string matcher_type_ = "homography";
+//#endif
+  // Use "affine" if there exists distortion
+  // Or just "homography"
+  std::string matcher_type_ = "affine";
   std::string estimator_type_ = "homography";
   std::string ba_cost_func_ = "ray";
   std::string ba_refine_mask_ = "xxxxx";
@@ -64,7 +66,7 @@ class Stitcher {
   int expos_comp_nr_filtering_ = 2;
   int expos_comp_block_size_ = 32;
   float match_conf_ = 0.3f;
-  std::string seam_find_type_ = "dp_colorgrad";
+  std::string seam_find_type_ = "gc_color";
   int blend_type_ = cv::detail::Blender::MULTI_BAND;
   float blend_strength_ = 5;
   int range_width_ = -1;

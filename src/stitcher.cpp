@@ -129,9 +129,11 @@ Stitcher::Stitcher(const int& num_images_given, cv::Size image_size_given)
     else if (warp_type_ == "stereographic")
       warper_creator_ = cv::makePtr<cv::StereographicWarper>();
     else if (warp_type_ == "compressedPlaneA2B1")
-      warper_creator_ = cv::makePtr<cv::CompressedRectilinearWarper>(2.0f, 1.0f);
+      warper_creator_ =
+          cv::makePtr<cv::CompressedRectilinearWarper>(2.0f, 1.0f);
     else if (warp_type_ == "compressedPlaneA1.5B1")
-      warper_creator_ = cv::makePtr<cv::CompressedRectilinearWarper>(1.5f, 1.0f);
+      warper_creator_ =
+          cv::makePtr<cv::CompressedRectilinearWarper>(1.5f, 1.0f);
     else if (warp_type_ == "compressedPlanePortraitA2B1")
       warper_creator_ =
           cv::makePtr<cv::CompressedRectilinearPortraitWarper>(2.0f, 1.0f);
@@ -158,7 +160,8 @@ Stitcher::Stitcher(const int& num_images_given, cv::Size image_size_given)
   }
 
   // compensator
-  compensator_ = cv::detail::ExposureCompensator::createDefault(expos_comp_type_);
+  compensator_ =
+      cv::detail::ExposureCompensator::createDefault(expos_comp_type_);
 #if (CV_VERSION_MAJOR >= 4)
   if (dynamic_cast<cv::detail::GainCompensator*>(compensator_.get())) {
     auto* gcompensator =
@@ -305,14 +308,16 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 #endif
 
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
-  cv::UMat matchMask(features_.size(), features_.size(), CV_8U, cv::Scalar(0));
 
-#pragma omp parallel for
-  for (int i = 0; i < num_images_ - 1; ++i) {
-    matchMask.getMat(cv::ACCESS_READ).at<char>(i, i + 1) = 1;
-  }
+  //  cv::UMat matchMask(features_.size(), features_.size(), CV_8U,
+  //  cv::Scalar(0));
+  //#pragma omp parallel for
+  //  for (int i = 0; i < num_images_ - 1; ++i) {
+  //    matchMask.getMat(cv::ACCESS_READ).at<char>(i, i + 1) = 1;
+  //  }
+  //  (*matcher_)(features_, pairwise_matches, matchMask);
+  (*matcher_)(features_, pairwise_matches);
 
-  (*matcher_)(features_, pairwise_matches, matchMask);
   matcher_->collectGarbage();
 
 #if ENABLE_LOG
@@ -323,6 +328,7 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   /////////////////
   // Estimating //
   ////////////////
+
 #if ENABLE_LOG
   LOGLN("Estimating");
   t = cv::getTickCount();
@@ -408,11 +414,11 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
     corners_[i] =
         warpers_[i]->warp(images_[i], K, cameras_[i].R, cv::INTER_LINEAR,
-                                  cv::BORDER_REFLECT, images_warped_[i]);
+                          cv::BORDER_REFLECT, images_warped_[i]);
     sizes_[i] = images_warped_[i].size();
 
     warpers_[i]->warp(masks_[i], K, cameras_[i].R, cv::INTER_NEAREST,
-                     cv::BORDER_CONSTANT, masks_warped_[i]);
+                      cv::BORDER_CONSTANT, masks_warped_[i]);
     images_warped_[i].convertTo(images_warped_f_[i], CV_32F);
   }
 
@@ -514,9 +520,8 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
     float blend_width =
         std::sqrt(static_cast<float>(dst_sz.area())) * blend_strength_ / 100.f;
     if (blend_width < 1.f)
-      blender_ =
-          cv::detail::Blender::createDefault(cv::detail::Blender::NO,
-                                                   try_cuda_);
+      blender_ = cv::detail::Blender::createDefault(cv::detail::Blender::NO,
+                                                    try_cuda_);
     else if (blend_type_ == cv::detail::Blender::MULTI_BAND) {
       auto* mb = dynamic_cast<cv::detail::MultiBandBlender*>(blender_.get());
       mb->setNumBands(
@@ -545,14 +550,14 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
     // Warp the current image
     warpers_[img_idx]->warp(img_[img_idx], K, cameras_[img_idx].R,
-                           cv::INTER_LINEAR, cv::BORDER_REFLECT,
+                            cv::INTER_LINEAR, cv::BORDER_REFLECT,
                             img_warped_[img_idx]);
 
     // Warp the current image mask
     mask_[img_idx].create(img_size, CV_8U);
     mask_[img_idx].setTo(cv::Scalar::all(255));
     warpers_[img_idx]->warp(mask_[img_idx], K, cameras_[img_idx].R,
-                           cv::INTER_NEAREST, cv::BORDER_CONSTANT,
+                            cv::INTER_NEAREST, cv::BORDER_CONSTANT,
                             mask_warped_[img_idx]);
 
     // Compensate exposure
@@ -568,7 +573,7 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
     // Blend the current image
     blender_->feed(img_warped_s_[img_idx], mask_warped_[img_idx],
-                  corners_[img_idx]);
+                   corners_[img_idx]);
   }
   blender_->blend(result, result_mask);
 
@@ -644,14 +649,14 @@ int Stitcher::process(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
     // Warp the current image
     warpers_[img_idx]->warp(img_[img_idx], K, cameras_[img_idx].R,
-                           cv::INTER_LINEAR, cv::BORDER_REFLECT,
+                            cv::INTER_LINEAR, cv::BORDER_REFLECT,
                             img_warped_[img_idx]);
 
     // Warp the current image mask
     mask_[img_idx].create(img_size, CV_8U);
     mask_[img_idx].setTo(cv::Scalar::all(255));
     warpers_[img_idx]->warp(mask_[img_idx], K, cameras_[img_idx].R,
-                           cv::INTER_NEAREST, cv::BORDER_CONSTANT,
+                            cv::INTER_NEAREST, cv::BORDER_CONSTANT,
                             mask_warped_[img_idx]);
 
     // Compensate exposure
@@ -667,7 +672,7 @@ int Stitcher::process(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
     // Blend the current image
     blender_->feed(img_warped_s_[img_idx], mask_warped_[img_idx],
-                  corners_[img_idx]);
+                   corners_[img_idx]);
   }
   blender_->blend(result, result_mask);
 #if ENABLE_LOG

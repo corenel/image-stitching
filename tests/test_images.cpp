@@ -45,9 +45,10 @@ int main(int argc, char* argv[]) {
   }
 
   // Process
-  LOGLN("------- Calibrating -------");
   cv::Mat result, result_mask;
   Stitcher s(num_images, full_img[0].size());
+
+  LOGLN("------- Calibrating -------");
   s.calibrate(full_img, result, result_mask);
   cv::imwrite("result_0.jpg", result);
 

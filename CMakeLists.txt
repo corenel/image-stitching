@@ -7,6 +7,9 @@ add_definitions(-Wall -O2)
 
 project(image_stitching)
 
+# Useful macros
+include(cmake/util.cmake)
+
 # OpenCV
 find_package(OpenCV REQUIRED)
 message(STATUS "OpenCV library status:")
@@ -29,25 +32,17 @@ if (APPLE)
     include_directories(/usr/local/include)
 endif ()
 
-add_executable(
+add_library(
     ${PROJECT_NAME}
-    src/main.cpp
     src/stitcher.cpp
+    src/video_provider.cpp
 )
-
 target_link_libraries(
     ${PROJECT_NAME}
     ${OpenCV_LIBS}
     OpenMP::OpenMP_CXX
 )
 
-#add_executable(
-#    test_${PROJECT_NAME}
-#    tests/stitching_detailed.cpp
-#)
-#
-#target_link_libraries(
-#    test_${PROJECT_NAME}
-#    ${OpenCV_LIBS}
-#    OpenMP::OpenMP_CXX
-#)
+add_simple_test(test_images)
+add_simple_test(test_videos)
+add_simple_test(test_stitching_detailed_origianl)
