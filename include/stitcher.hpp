@@ -47,11 +47,11 @@ class Stitcher {
   bool is_seam_scale_set_ = false;
   bool is_compose_scale_set_ = false;
   float conf_thresh_ = 0.5f;
-//#ifdef HAVE_OPENCV_XFEATURES2D
-//  std::string features_type_ = "surf";
-//#else
+  //#ifdef HAVE_OPENCV_XFEATURES2D
+  //  std::string features_type_ = "surf";
+  //#else
   std::string features_type_ = "orb";
-//#endif
+  //#endif
   // Use "affine" if there exists distortion
   // Or just "homography"
   std::string matcher_type_ = "affine";
