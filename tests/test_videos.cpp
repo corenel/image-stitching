@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
   load_images(calib_list, calib_images);
 
   // Initialize video providers
-  VideoProvider providers(input_list);
+  MultipleVideoProvider providers(input_list);
 
   // Process
   cv::Mat result, result_mask;

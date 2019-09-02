@@ -4,10 +4,11 @@
 #include <vector>
 #include "opencv2/opencv.hpp"
 
-class VideoProvider {
+class MultipleVideoProvider {
  public:
-  explicit VideoProvider(const std::vector<std::string> &video_files);
-  ~VideoProvider();
+  explicit MultipleVideoProvider(const std::vector<std::string> &video_files);
+
+  ~MultipleVideoProvider();
 
   bool open(const std::vector<std::string> &video_files);
   bool isOpened();
@@ -16,5 +17,5 @@ class VideoProvider {
 
  private:
   std::vector<std::string> video_files_;
-  std::vector<cv::VideoCapture> video_readers_;
+  std::vector<cv::Ptr<cv::VideoCapture>> video_readers_;
 };
