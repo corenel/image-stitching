@@ -43,9 +43,11 @@ int main(int argc, char* argv[]) {
   std::vector<std::string> input_list;
   get_file_content(path_to_calib_list, calib_list);
   get_file_content(path_to_input_list, input_list);
+  std::cout << "calibration list:" << std::endl;
   for (const auto& e : calib_list) {
     std::cout << e << std::endl;
   }
+  std::cout << "input list:" << std::endl;
   for (const auto& e : input_list) {
     std::cout << e << std::endl;
   }
