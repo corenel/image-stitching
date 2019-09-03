@@ -309,14 +309,16 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
 
-  //  cv::UMat matchMask(features_.size(), features_.size(), CV_8U,
-  //  cv::Scalar(0));
-  //#pragma omp parallel for
-  //  for (int i = 0; i < num_images_ - 1; ++i) {
-  //    matchMask.getMat(cv::ACCESS_READ).at<char>(i, i + 1) = 1;
-  //  }
-  //  (*matcher_)(features_, pairwise_matches, matchMask);
-  (*matcher_)(features_, pairwise_matches);
+  cv::UMat matchMask(features_.size(), features_.size(), CV_8U, cv::Scalar(0));
+  // mask frames from The adjacent cameras
+#pragma omp parallel for
+  for (int i = 0; i < num_images_ - 1; ++i) {
+    matchMask.getMat(cv::ACCESS_READ).at<char>(i, i + 1) = 1;
+  }
+  // mask frames from the first and the last camera
+  matchMask.getMat(cv::ACCESS_READ).at<char>(0, num_images_) = 1;
+  (*matcher_)(features_, pairwise_matches, matchMask);
+  //  (*matcher_)(features_, pairwise_matches);
 
   matcher_->collectGarbage();
 
