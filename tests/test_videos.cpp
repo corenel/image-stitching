@@ -73,6 +73,11 @@ int main(int argc, char* argv[]) {
     LOGLN("------- Processing -------");
     for (int i = 0; i < 10; ++i) {
       providers.read(frames);
+      // s.process(frames, result, result_mask);
+      // Need to convert cv::Mat to CV_8U for correct displaying
+      // Or you may get a gray image
+      // result.convertTo(result, CV_8U);
+      // cv::imshow('result', result)
     }
     s.process(frames, result, result_mask);
     cv::imwrite("result_1.jpg", result);
