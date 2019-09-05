@@ -45,4 +45,5 @@ target_link_libraries(
 
 add_simple_test(test_images)
 add_simple_test(test_videos)
+add_simple_test(test_streams)
 add_simple_test(test_stitching_detailed_origianl)

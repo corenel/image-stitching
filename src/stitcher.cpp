@@ -2,16 +2,31 @@
 
 Stitcher::Stitcher(const int& num_images_given, cv::Size image_size_given)
     : num_images_(num_images_given), image_size_(std::move(image_size_given)) {
+  reset();
+}
+
+void Stitcher::reset() {
   if (features_type_ == "orb") match_conf_ = 0.3f;
   if (preview_) {
     compose_megapix_ = 0.6;
   }
 
+  features_.clear();
+  images_.clear();
+  cameras_.clear();
+  warpers_.clear();
   features_.resize(num_images_);
   images_.resize(num_images_);
   cameras_.resize(num_images_);
   warpers_.resize(num_images_);
 
+  img_.clear();
+  corners_.clear();
+  masks_warped_.clear();
+  images_warped_.clear();
+  images_warped_f_.clear();
+  sizes_.clear();
+  masks_.clear();
   img_.resize(num_images_);
   corners_.resize(num_images_);
   masks_warped_.resize(num_images_);
@@ -20,6 +35,12 @@ Stitcher::Stitcher(const int& num_images_given, cv::Size image_size_given)
   sizes_.resize(num_images_);
   masks_.resize(num_images_);
 
+  img_warped_.clear();
+  img_warped_s_.clear();
+  dilated_mask_.clear();
+  seam_mask_.clear();
+  mask_.clear();
+  mask_warped_.clear();
   img_warped_.resize(num_images_);
   img_warped_s_.resize(num_images_);
   dilated_mask_.resize(num_images_);
@@ -227,6 +248,8 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 #if ENABLE_LOG
   int64 app_start_time = cv::getTickCount();
 #endif
+
+  reset();
 
   // Check if have enough images
   if (num_images_ != static_cast<int>(full_img.size())) {
@@ -516,30 +539,32 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
     }
   }
 
-  if (!blender_) {
-    blender_ = cv::detail::Blender::createDefault(blend_type_, try_cuda_);
-    cv::Size dst_sz = cv::detail::resultRoi(corners_, sizes_).size();
-    float blend_width =
-        std::sqrt(static_cast<float>(dst_sz.area())) * blend_strength_ / 100.f;
-    if (blend_width < 1.f)
-      blender_ = cv::detail::Blender::createDefault(cv::detail::Blender::NO,
-                                                    try_cuda_);
-    else if (blend_type_ == cv::detail::Blender::MULTI_BAND) {
-      auto* mb = dynamic_cast<cv::detail::MultiBandBlender*>(blender_.get());
-      mb->setNumBands(
-          static_cast<int>(std::ceil(log(blend_width) / log(2.)) - 1.));
-      LOGLN("Multi-band blender, number of bands: " << mb->numBands());
-    } else if (blend_type_ == cv::detail::Blender::FEATHER) {
-      auto* fb = dynamic_cast<cv::detail::FeatherBlender*>(blender_.get());
-      fb->setSharpness(1.f / blend_width);
-      LOGLN("Feather blender, sharpness: " << fb->sharpness());
-    }
-    blender_->prepare(corners_, sizes_);
+  //  if (!blender_) {
+  LOGLN("Create blender");
+  blender_ = cv::detail::Blender::createDefault(blend_type_, try_cuda_);
+  cv::Size dst_sz = cv::detail::resultRoi(corners_, sizes_).size();
+  float blend_width =
+      std::sqrt(static_cast<float>(dst_sz.area())) * blend_strength_ / 100.f;
+  if (blend_width < 1.f)
+    blender_ =
+        cv::detail::Blender::createDefault(cv::detail::Blender::NO, try_cuda_);
+  else if (blend_type_ == cv::detail::Blender::MULTI_BAND) {
+    auto* mb = dynamic_cast<cv::detail::MultiBandBlender*>(blender_.get());
+    mb->setNumBands(
+        static_cast<int>(std::ceil(log(blend_width) / log(2.)) - 1.));
+    LOGLN("Multi-band blender, number of bands: " << mb->numBands());
+  } else if (blend_type_ == cv::detail::Blender::FEATHER) {
+    auto* fb = dynamic_cast<cv::detail::FeatherBlender*>(blender_.get());
+    fb->setSharpness(1.f / blend_width);
+    LOGLN("Feather blender, sharpness: " << fb->sharpness());
   }
+  blender_->prepare(corners_, sizes_);
+  //  }
 
 #pragma omp parallel for
   for (int img_idx = 0; img_idx < num_images_; ++img_idx) {
     // Read image and resize it if necessary
+
     if (std::abs(compose_scale_ - 1) > 1e-1)
       cv::resize(full_img[img_idx], img_[img_idx], cv::Size(), compose_scale_,
                  compose_scale_, cv::INTER_LINEAR_EXACT);
