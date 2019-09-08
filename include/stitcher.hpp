@@ -19,8 +19,12 @@
 #endif
 
 #define ENABLE_LOG 1
+#ifndef LOG
 #define LOG(msg) std::cout << msg
+#endif
+#ifndef LOGLN
 #define LOGLN(msg) std::cout << msg << std::endl
+#endif
 
 class Stitcher {
  public:

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5.1)
 # Enable C++14
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-add_definitions(-Wall -O2)
+add_definitions(-Wall -g)
 
 project(image_stitching)
 
@@ -42,6 +42,8 @@ add_library(
     ${PROJECT_NAME}
     src/stitcher.cpp
     src/video_provider.cpp
+    src/stream_provider.cpp
+    src/stream_writer.cpp
 )
 target_link_libraries(
     ${PROJECT_NAME}
@@ -54,7 +56,8 @@ if (USE_OPENMP)
     )
 endif (USE_OPENMP)
 
-add_simple_test(test_images)
-add_simple_test(test_videos)
+#add_simple_test(test_images)
+#add_simple_test(test_videos)
 add_simple_test(test_streams)
+add_simple_test(test_gst)
 # add_simple_test(test_stitching_detailed_origianl)
