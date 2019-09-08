@@ -397,7 +397,9 @@ int main(int argc, char* argv[]) {
   vector<Mat> images(num_images);
   double seam_work_aspect = 1;
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images; ++i) {
     if (work_megapix < 0) {
       img[i] = full_img[i];
@@ -457,7 +459,9 @@ int main(int argc, char* argv[]) {
 
   UMat matchMask(features.size(), features.size(), CV_8U, Scalar(0));
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images - 1; ++i) {
     matchMask.getMat(ACCESS_READ).at<char>(i, i + 1) = 1;
   }
@@ -572,7 +576,9 @@ int main(int argc, char* argv[]) {
   vector<UMat> masks(num_images);
 
   // Prepare images masks
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images; ++i) {
     masks[i].create(images[i].size(), CV_8U);
     masks[i].setTo(Scalar::all(255));
@@ -633,14 +639,18 @@ int main(int argc, char* argv[]) {
   }
 
   vector<Ptr<RotationWarper>> warpers(num_images);
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images; ++i) {
     warpers[i] = warper_creator->create(
         static_cast<float>(warped_image_scale * seam_work_aspect));
   }
 
   vector<UMat> images_warped_f(num_images);
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images; ++i) {
     Ptr<RotationWarper> warper = warper_creator->create(
         static_cast<float>(warped_image_scale * seam_work_aspect));
@@ -771,13 +781,17 @@ int main(int argc, char* argv[]) {
     // Update warped image scale
     warped_image_scale *= static_cast<float>(compose_work_aspect);
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
     for (int img_idx = 0; img_idx < num_images; ++img_idx) {
       warpers[img_idx] = warper_creator->create(warped_image_scale);
     }
 
     // Update corners and sizes
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
     for (int i = 0; i < num_images; ++i) {
       // Update intrinsics
       cameras[i].focal *= compose_work_aspect;
@@ -818,7 +832,9 @@ int main(int argc, char* argv[]) {
     blender->prepare(corners, sizes);
   }
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int img_idx = 0; img_idx < num_images; ++img_idx) {
     // Read image and resize it if necessary
     if (abs(compose_scale - 1) > 1e-1)

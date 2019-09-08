@@ -40,7 +40,9 @@ bool MultipleVideoProvider::read(std::vector<cv::Mat>& frames) {
   frames.clear();
   frames.resize(video_readers_.size());
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (size_t i = 0; i < video_readers_.size(); ++i) {
     // wait for a new frame from camera and store it into 'frame'
     bool ret = video_readers_[i]->read(frames[i]);

@@ -277,7 +277,9 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   auto t = cv::getTickCount();
 #endif
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images_; ++i) {
     if (work_megapix_ < 0) {
       img_[i] = full_img[i];
@@ -334,7 +336,9 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
   cv::UMat matchMask(features_.size(), features_.size(), CV_8U, cv::Scalar(0));
   // mask frames from The adjacent cameras
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images_ - 1; ++i) {
     matchMask.getMat(cv::ACCESS_READ).at<char>(i, i + 1) = 1;
   }
@@ -413,7 +417,9 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 #endif
 
   // Prepare images masks
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images_; ++i) {
     masks_[i].create(images_[i].size(), CV_8U);
     masks_[i].setTo(cv::Scalar::all(255));
@@ -421,13 +427,17 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 
   // Warp images and their masks
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images_; ++i) {
     warpers_[i] = warper_creator_->create(
         static_cast<float>(warped_image_scale * seam_work_aspect_));
   }
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < num_images_; ++i) {
     cv::Mat_<float> K;
     cameras_[i].K().convertTo(K, CV_32F);
@@ -511,13 +521,17 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
     // Update warped image scale
     warped_image_scale *= static_cast<float>(compose_work_aspect_);
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
     for (int img_idx = 0; img_idx < num_images_; ++img_idx) {
       warpers_[img_idx] = warper_creator_->create(warped_image_scale);
     }
 
     // Update corners and sizes
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
     for (int i = 0; i < num_images_; ++i) {
       // Update intrinsics
       cameras_[i].focal *= compose_work_aspect_;
@@ -561,7 +575,9 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   blender_->prepare(corners_, sizes_);
   //  }
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
   for (int img_idx = 0; img_idx < num_images_; ++img_idx) {
     // Read image and resize it if necessary
 
