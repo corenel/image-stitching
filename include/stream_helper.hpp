@@ -56,6 +56,21 @@ inline std::map<std::string, std::string> defaultEncodeElementByCodec() {
   return res;
 }
 
+inline std::map<std::string, std::string> nvidiaEncodeElementByCodec() {
+  std::map<std::string, std::string> res;
+  res["h264"] = "nvh264enc";
+  return res;
+}
+
+inline std::map<std::string, std::string> nvidiaDecodeElementByCodec() {
+  std::map<std::string, std::string> res;
+  res["h264"] = "parsebin ! nvdec ! gldownload";
+  res["h265"] = "parsebin ! nvdec ! gldownload";
+  res["mpeg2"] = "parsebin ! nvdec ! gldownload";
+  res["mjpeg"] = "parsebin ! nvdec ! gldownload";
+  return res;
+}
+
 inline std::map<std::string, std::string> VAAPIEncodeElementByCodec() {
   std::map<std::string, std::string> res;
   res["h264"] = "parsebin ! vaapih264enc";
@@ -121,7 +136,7 @@ inline std::map<std::string, std::string> muxPluginByContainer() {
   res["mp4"] = "qtmux";
   res["mov"] = "qtmux";
   res["mkv"] = "matroskamux";
-  res["flv"] = "flvmux streamable=true";
+  res["flv"] = "h264parse ! flvmux streamable=true";
   return res;
 }
 
@@ -183,6 +198,9 @@ inline cv::Ptr<cv::VideoCapture> createCapture(const std::string &backend,
     else if (backend.find("mfx") == 4)
       line << getValue(mfxDecodeElementByCodec(), codec,
                        "Invalid or unsupported codec");
+    else if (backend.find("nvidia") == 4)
+      line << getValue(nvidiaDecodeElementByCodec(), codec,
+                       "Invalid or unsupported codec");
     else
       return cv::Ptr<cv::VideoCapture>();
     line << " ! videoconvert n-threads=" << cv::getNumThreads();
@@ -218,6 +236,8 @@ inline cv::Ptr<cv::VideoWriter> createWriter(const std::string &backend,
       line << getValue(libavEncodeElementByCodec(), codec, "Invalid codec");
     else if (backend.find("mfx") == 4)
       line << getValue(mfxEncodeElementByCodec(), codec, "Invalid codec");
+    else if (backend.find("nvidia") == 4)
+      line << getValue(nvidiaEncodeElementByCodec(), codec, "Invalid codec");
     else
       return cv::Ptr<cv::VideoWriter>();
     line << " ! ";

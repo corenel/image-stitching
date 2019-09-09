@@ -26,10 +26,10 @@ int main(int argc, char* argv[]) {
 
   // Recv
   StreamProvider provider(path_to_input_file, "gst-libav", "h264", "720p", 25);
-  StreamWriter writer("rtmp://bdcatek.com:55555/live/tteesstt", "gst-basic",
-                      "h264", "720p", 25);
+  StreamWriter writer("rtmp://192.168.6.3/live/test", "gst-nvidia", "h264",
+                      "720p", 25);
   cv::Mat frame;
-  if (provider.isOpened()) {
+  while (provider.isOpened()) {
     provider.read(frame);
     if (writer.isOpened()) {
       writer.write(frame);
