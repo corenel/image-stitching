@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5.1)
 # Enable C++14
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-add_definitions(-Wall -g)
+add_definitions(-Wall -O2)
 
 project(image_stitching)
 

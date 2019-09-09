@@ -41,7 +41,9 @@ class StreamProvider {
 class MultipleStreamProvider {
  public:
   explicit MultipleStreamProvider(
-      const std::vector<std::string> &video_stream_urls);
+      std::vector<std::string> video_stream_urls,
+      std::string backend = "gst-default", std::string codec = "h264",
+      std::string resolution = "720p", unsigned fps = 30);
   ~MultipleStreamProvider();
 
   bool open();
@@ -50,5 +52,10 @@ class MultipleStreamProvider {
   bool read(std::vector<cv::Mat> &frames);
 
  private:
+  std::vector<std::string> stream_urls_;
   std::vector<cv::Ptr<StreamProvider>> streamers_;
+  std::string backend_;
+  std::string codec_;
+  std::string resolution_;
+  unsigned fps_;
 };

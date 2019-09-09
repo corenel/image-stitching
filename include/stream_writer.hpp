@@ -4,11 +4,22 @@
 
 class StreamWriter {
  public:
-  explicit StreamWriter(const std::string &video_stream_url);
+  explicit StreamWriter(std::string video_stream_url,
+                        std::string backend = "gst-default",
+                        std::string codec = "h264",
+                        std::string resolution = "720p", unsigned fps = 30);
+  ~StreamWriter();
+  bool open();
+  bool isOpened();
+  void close();
+  bool write(const cv::Mat& frame);
 
  private:
-  std::string backend_ = "gst-default";  // video backend
-  std::string codec_ = "h264";           // codec type
-  std::string stream_url_;               // stream url
-  std::string resolution_ = "720p";      // video resolution
+  std::string stream_url_;  // stream url
+  std::string backend_;     // video backend
+  std::string codec_;       // codec type
+  std::string resolution_;  // video resolution
+  cv::Size size_;
+  unsigned fps_;  // video fps
+  cv::Ptr<cv::VideoWriter> writer_;
 };

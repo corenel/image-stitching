@@ -12,6 +12,9 @@
 #ifndef LOGLN
 #define LOGLN(msg) std::cout << msg << std::endl
 #endif
+#ifndef ERRLN
+#define ERRLN(msg) std::cerr << msg << std::endl
+#endif
 
 template <typename M>
 inline typename M::mapped_type getValue(const M &dict,
@@ -118,6 +121,7 @@ inline std::map<std::string, std::string> muxPluginByContainer() {
   res["mp4"] = "qtmux";
   res["mov"] = "qtmux";
   res["mkv"] = "matroskamux";
+  res["flv"] = "flvmux streamable=true";
   return res;
 }
 
@@ -217,10 +221,18 @@ inline cv::Ptr<cv::VideoWriter> createWriter(const std::string &backend,
     else
       return cv::Ptr<cv::VideoWriter>();
     line << " ! ";
-    line << getValue(muxPluginByContainer(), containerByName(file_name),
-                     "Invalid container");
+    if (file_name.find("rtmp") == 0) {
+      line << getValue(muxPluginByContainer(), "flv", "Invalid container");
+    } else {
+      line << getValue(muxPluginByContainer(), containerByName(file_name),
+                       "Invalid container");
+    }
     line << " ! ";
-    line << "filesink location=\"" << file_name << "\"";
+    if (file_name.find("rtmp") == 0) {
+      line << "rtmpsink location=\"" << file_name << " live=true\"";
+    } else {
+      line << "filesink location=\"" << file_name << "\"";
+    }
     std::cout << "Created GStreamer writer ( " << line.str() << " )"
               << std::endl;
     return cv::makePtr<cv::VideoWriter>(line.str(), cv::CAP_GSTREAMER, 0, fps,

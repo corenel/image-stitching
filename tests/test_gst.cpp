@@ -1,5 +1,6 @@
 #include <tclap/CmdLine.h>
 #include "stream_provider.hpp"
+#include "stream_writer.hpp"
 
 int main(int argc, char* argv[]) {
   // Parse arguments
@@ -24,12 +25,16 @@ int main(int argc, char* argv[]) {
   }
 
   // Recv
-  StreamProvider provider(path_to_input_file, "gst-libav", "h264", "720p",
-                          25);
+  StreamProvider provider(path_to_input_file, "gst-libav", "h264", "720p", 25);
+  StreamWriter writer("rtmp://bdcatek.com:55555/live/tteesstt", "gst-basic",
+                      "h264", "720p", 25);
   cv::Mat frame;
   if (provider.isOpened()) {
     provider.read(frame);
+    if (writer.isOpened()) {
+      writer.write(frame);
+    }
+    cv::imwrite("recv_0.jpg", frame);
   }
-  cv::imwrite("recv_0.jpg", frame);
   return 0;
 }
