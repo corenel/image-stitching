@@ -24,7 +24,8 @@ int main(int argc, char* argv[]) {
   }
 
   // Recv
-  StreamProvider provider(path_to_input_file);
+  StreamProvider provider(path_to_input_file, "gst-libav", "h264", "720p",
+                          25);
   cv::Mat frame;
   if (provider.isOpened()) {
     provider.read(frame);

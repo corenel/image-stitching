@@ -29,7 +29,7 @@ bool StreamProvider::open() {
     return false;
   }
   if (!cap_->isOpened()) {
-    LOGLN("Capture is not opened" << stream_url_);
+    LOGLN("Capture is not opened: " << stream_url_);
     return false;
   }
   return true;

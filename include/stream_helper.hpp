@@ -121,6 +121,13 @@ inline std::map<std::string, std::string> muxPluginByContainer() {
   return res;
 }
 
+inline std::map<std::string, std::string> depayPluginByContainer() {
+  std::map<std::string, std::string> res;
+  res["h264"] = "rtph264depay";
+  res["h265"] = "rtph265depay";
+  return res;
+}
+
 inline std::string containerByName(const std::string &name) {
   size_t found = name.rfind('.');
   if (found != std::string::npos) {
@@ -151,10 +158,17 @@ inline cv::Ptr<cv::VideoCapture> createCapture(const std::string &backend,
     return cv::makePtr<cv::VideoCapture>(file_name, cv::CAP_GSTREAMER);
   } else if (backend.find("gst") == 0) {
     std::ostringstream line;
-    line << "filesrc location=\"" << file_name << "\"";
-    line << " ! ";
-    line << getValue(demuxPluginByContainer(), containerByName(file_name),
-                     "Invalid container");
+    if (file_name.find("rtsp") == 0) {
+      line << "rtspsrc latency=0 location=\"" << file_name << "\"";
+      line << " ! ";
+      line << getValue(depayPluginByContainer(), codec, "Invalid codec");
+      line << " ! queue";
+    } else {
+      line << "filesrc location=\"" << file_name << "\"";
+      line << " ! ";
+      line << getValue(demuxPluginByContainer(), containerByName(file_name),
+                       "Invalid container");
+    }
     line << " ! ";
     if (backend.find("basic") == 4)
       line << "decodebin";

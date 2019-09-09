@@ -25,7 +25,10 @@ message(STATUS "    libraries: ${OpenCV_LIBS}")
 message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 
 # OpemMP for parallel computing
-OPTION(USE_OPENMP "Use OpenMP to enamble <omp.h>" OFF)
+OPTION(USE_OPENMP "Use OpenMP to enamble <omp.h>" ON)
+if (APPLE)
+    SET(USE_OPENMP OFF)
+endif ()
 # Find OpenMP
 if (USE_OPENMP)
     find_package(OpenMP REQUIRED)
