@@ -64,8 +64,8 @@ inline std::map<std::string, std::string> nvidiaEncodeElementByCodec() {
 
 inline std::map<std::string, std::string> nvidiaDecodeElementByCodec() {
   std::map<std::string, std::string> res;
-  res["h264"] = "parsebin ! nvdec ! gldownload";
-  res["h265"] = "parsebin ! nvdec ! gldownload";
+  res["h264"] = "h264parse ! nvdec ! gldownload";
+  res["h265"] = "h265parse ! nvdec ! gldownload";
   res["mpeg2"] = "parsebin ! nvdec ! gldownload";
   res["mjpeg"] = "parsebin ! nvdec ! gldownload";
   return res;
