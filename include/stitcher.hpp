@@ -18,7 +18,7 @@
 #include "opencv2/xfeatures2d/nonfree.hpp"
 #endif
 
-#define ENABLE_LOG 1
+#define ENABLE_LOG 0
 #ifndef LOG
 #define LOG(msg) std::cout << msg
 #endif

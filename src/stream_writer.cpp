@@ -32,7 +32,9 @@ bool StreamWriter::open() {
 
 bool StreamWriter::isOpened() { return writer_->isOpened(); }
 
-void StreamWriter::close() { writer_.release(); }
+void StreamWriter::close() {
+  writer_.release();
+}
 
 bool StreamWriter::write(const cv::Mat& frame) {
   if (frame.empty()) {

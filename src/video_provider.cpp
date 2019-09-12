@@ -39,6 +39,7 @@ void MultipleVideoProvider::close() {
 bool MultipleVideoProvider::read(std::vector<cv::Mat>& frames) {
   frames.clear();
   frames.resize(video_readers_.size());
+  bool rets = true;
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
@@ -49,13 +50,15 @@ bool MultipleVideoProvider::read(std::vector<cv::Mat>& frames) {
     // check if we succeeded
     if (!ret) {
       std::cerr << "ERROR! frame not grabbed: " << video_files_[i] << std::endl;
+      rets = false;
       continue;
     } else if (frames[i].empty()) {
       std::cerr << "ERROR! blank frame grabbed: " << video_files_[i]
                 << std::endl;
+      rets = false;
       continue;
     }
   }
 
-  return true;
+  return rets;
 }

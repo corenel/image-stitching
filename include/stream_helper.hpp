@@ -32,6 +32,7 @@ inline std::map<std::string, cv::Size> sizeByResolution() {
   res["720p"] = cv::Size(1280, 720);
   res["1080p"] = cv::Size(1920, 1080);
   res["4k"] = cv::Size(3840, 2160);
+  res["custom"] = cv::Size(3215, 462);
   return res;
 }
 
@@ -133,7 +134,7 @@ inline std::map<std::string, std::string> demuxPluginByContainer() {
 inline std::map<std::string, std::string> muxPluginByContainer() {
   std::map<std::string, std::string> res;
   res["avi"] = "avimux";
-  res["mp4"] = "qtmux";
+  res["mp4"] = "h264parse ! qtmux";
   res["mov"] = "qtmux";
   res["mkv"] = "matroskamux";
   res["flv"] = "h264parse ! flvmux streamable=true";

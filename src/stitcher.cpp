@@ -504,8 +504,8 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   // Compositing //
   /////////////////
 
-  LOGLN("Compositing...");
 #if ENABLE_LOG
+  LOGLN("Compositing...");
   t = cv::getTickCount();
 #endif
 
@@ -554,7 +554,9 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   }
 
   //  if (!blender_) {
+#if ENABLE_LOG
   LOGLN("Create blender");
+#endif
   blender_ = cv::detail::Blender::createDefault(blend_type_, try_cuda_);
   cv::Size dst_sz = cv::detail::resultRoi(corners_, sizes_).size();
   float blend_width =
@@ -566,11 +568,15 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
     auto* mb = dynamic_cast<cv::detail::MultiBandBlender*>(blender_.get());
     mb->setNumBands(
         static_cast<int>(std::ceil(log(blend_width) / log(2.)) - 1.));
+#if ENABLE_LOG
     LOGLN("Multi-band blender, number of bands: " << mb->numBands());
+#endif
   } else if (blend_type_ == cv::detail::Blender::FEATHER) {
     auto* fb = dynamic_cast<cv::detail::FeatherBlender*>(blender_.get());
     fb->setSharpness(1.f / blend_width);
+#if ENABLE_LOG
     LOGLN("Feather blender, sharpness: " << fb->sharpness());
+#endif
   }
   blender_->prepare(corners_, sizes_);
   //  }
@@ -662,11 +668,15 @@ int Stitcher::process(const std::vector<cv::Mat>& full_img, cv::Mat& result,
     auto* mb = dynamic_cast<cv::detail::MultiBandBlender*>(blender_.get());
     mb->setNumBands(
         static_cast<int>(std::ceil(log(blend_width) / log(2.)) - 1.));
+#if ENABLE_LOG
     LOGLN("Multi-band blender, number of bands: " << mb->numBands());
+#endif
   } else if (blend_type_ == cv::detail::Blender::FEATHER) {
     auto* fb = dynamic_cast<cv::detail::FeatherBlender*>(blender_.get());
     fb->setSharpness(1.f / blend_width);
+#if ENABLE_LOG
     LOGLN("Feather blender, sharpness: " << fb->sharpness());
+#endif
   }
   blender_->prepare(corners_, sizes_);
 #if ENABLE_LOG
