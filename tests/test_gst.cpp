@@ -25,16 +25,26 @@ int main(int argc, char* argv[]) {
   }
 
   // Recv
-  StreamProvider provider(path_to_input_file, "gst-nvidia", "h264", "720p", 25);
-  StreamWriter writer("rtmp://192.168.6.3/live/test", "gst-nvidia", "h264",
-                      "720p", 25);
   cv::Mat frame;
-  while (provider.isOpened()) {
-    provider.read(frame);
+  cv::Size sz(2856, 394);
+  StreamWriter writer("rtmp://192.168.6.3/live/test", "gst-nvidia", "h264",
+                      "720p", 25, sz);
+
+  //  StreamProvider provider(path_to_input_file, "gst-nvidia", "h264", "720p",
+  //  25); while (provider.isOpened()) {
+  //    fake_reader->read(frame);
+  //    if (writer.isOpened()) {
+  //      writer.write(frame);
+  //    }
+  //    cv::imwrite("recv_0.jpg", frame);
+  //  }
+
+  auto fake_reader = createSynthSource(sz, 25);
+  while (fake_reader->isOpened()) {
+    fake_reader->read(frame);
     if (writer.isOpened()) {
       writer.write(frame);
     }
-    cv::imwrite("recv_0.jpg", frame);
   }
   return 0;
 }

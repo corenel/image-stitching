@@ -633,6 +633,10 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
         << ((cv::getTickCount() - app_start_time) / cv::getTickFrequency())
         << " sec");
 #endif
+
+  post_process(result);
+  post_process(result_mask);
+
   return 0;
 }
 
@@ -736,5 +740,21 @@ int Stitcher::process(const std::vector<cv::Mat>& full_img, cv::Mat& result,
         << ((cv::getTickCount() - app_start_time) / cv::getTickFrequency())
         << " sec");
 #endif
+
+  post_process(result);
+  post_process(result_mask);
+
   return 0;
+}
+
+void Stitcher::post_process(cv::Mat& frame) {
+  // Convert type from CV_16UC3 to CV_8UC3
+  frame.convertTo(frame, CV_8UC3);
+
+  // Avoid odd width and height
+  if (frame.size().height % 2 != 0 || frame.size().width % 2 != 0) {
+    auto sz = frame.size();
+    cv::Rect even_roi(0, 0, sz.width - sz.width % 2, sz.height - sz.height % 2);
+    frame = frame(even_roi);
+  }
 }

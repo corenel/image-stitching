@@ -61,7 +61,6 @@ int main(int argc, char* argv[]) {
 
   // Initialize video providers
   MultipleVideoProvider providers(input_list);
-  StreamWriter writer("result.mp4", "gst-nvidia", "h264", "720p", 25);
 
   // Process
   cv::Mat result, result_mask, result_resized;
@@ -72,18 +71,17 @@ int main(int argc, char* argv[]) {
     providers.read(frames);
     Stitcher s(num_images, frames[0].size());
     s.calibrate(frames, result, result_mask);
-    LOGLN(result.size());
     cv::imwrite("result_0.jpg", result);
 
     LOGLN("------- Processing -------");
+    StreamWriter writer("result.mp4", "gst-nvidia", "h264", "720p", 25,
+                        result.size());
     auto ret = providers.read(frames);
     auto count = 0;
-    while (ret or count <= 200) {
+    while (ret) {
+      LOGLN(count);
       s.process(frames, result, result_mask);
-      //      cv::imwrite("result_1.jpg", result);
-      result.convertTo(result, CV_8U);
-      cv::resize(result, result_resized, cv::Size(1280, 720));
-      writer.write(result_resized);
+      writer.write(result);
       ret = providers.read(frames);
       count += 1;
     }

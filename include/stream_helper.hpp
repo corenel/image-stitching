@@ -32,7 +32,7 @@ inline std::map<std::string, cv::Size> sizeByResolution() {
   res["720p"] = cv::Size(1280, 720);
   res["1080p"] = cv::Size(1920, 1080);
   res["4k"] = cv::Size(3840, 2160);
-  res["custom"] = cv::Size(3215, 462);
+  res["custom"] = cv::Size(2855, 394);
   return res;
 }
 
@@ -59,7 +59,8 @@ inline std::map<std::string, std::string> defaultEncodeElementByCodec() {
 
 inline std::map<std::string, std::string> nvidiaEncodeElementByCodec() {
   std::map<std::string, std::string> res;
-  res["h264"] = "nvh264enc";
+  res["h264"] =
+      "nvh264enc preset=3 state=2 gop-size=30 bitrate=5000 ! h264parse";
   return res;
 }
 
@@ -134,10 +135,10 @@ inline std::map<std::string, std::string> demuxPluginByContainer() {
 inline std::map<std::string, std::string> muxPluginByContainer() {
   std::map<std::string, std::string> res;
   res["avi"] = "avimux";
-  res["mp4"] = "h264parse ! qtmux";
+  res["mp4"] = "qtmux";
   res["mov"] = "qtmux";
   res["mkv"] = "matroskamux";
-  res["flv"] = "h264parse ! flvmux streamable=true";
+  res["flv"] = "flvmux streamable=true";
   return res;
 }
 
@@ -222,7 +223,7 @@ inline cv::Ptr<cv::VideoWriter> createWriter(const std::string &backend,
                                              const cv::Size &sz, unsigned fps) {
   if (backend == "gst-default") {
     std::cout << "Created GStreamer writer ( " << file_name << ", FPS=" << fps
-              << ", Size=" << sz << ")" << std::endl;
+              << ", Size=" << sz << " )" << std::endl;
     return cv::makePtr<cv::VideoWriter>(
         file_name, cv::CAP_GSTREAMER,
         getValue(fourccByCodec(), codec, "Invalid codec"), fps, sz, true);
@@ -254,8 +255,8 @@ inline cv::Ptr<cv::VideoWriter> createWriter(const std::string &backend,
     } else {
       line << "filesink location=\"" << file_name << "\"";
     }
-    std::cout << "Created GStreamer writer ( " << line.str() << " )"
-              << std::endl;
+    std::cout << "Created GStreamer writer ( " << line.str() << ", FPS=" << fps
+              << ", Size=" << sz << " )" << std::endl;
     return cv::makePtr<cv::VideoWriter>(line.str(), cv::CAP_GSTREAMER, 0, fps,
                                         sz, true);
   } else if (backend == "ffmpeg") {

@@ -113,4 +113,5 @@ class Stitcher {
   cv::Ptr<cv::detail::Blender> blender_;
 
   void reset();
+  void post_process(cv::Mat & frame);
 };
