@@ -509,11 +509,12 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   t = cv::getTickCount();
 #endif
 
-  if (!is_compose_scale_set_) {
+  //  if (!is_compose_scale_set_) {
+  if (true) {
     if (compose_megapix_ > 0)
       compose_scale_ = std::min(
           1.0, std::sqrt(compose_megapix_ * 1e6 / full_img[0].size().area()));
-    is_compose_scale_set_ = true;
+    //    is_compose_scale_set_ = true;
 
     // Compute relative scales
     compose_work_aspect_ = compose_scale_ / work_scale_;
@@ -661,27 +662,6 @@ int Stitcher::process(const std::vector<cv::Mat>& full_img, cv::Mat& result,
 #if ENABLE_LOG
   t = cv::getTickCount();
 #endif
-  blender_ = cv::detail::Blender::createDefault(blend_type_, try_cuda_);
-  cv::Size dst_sz = cv::detail::resultRoi(corners_, sizes_).size();
-  float blend_width =
-      std::sqrt(static_cast<float>(dst_sz.area())) * blend_strength_ / 100.f;
-  if (blend_width < 1.f)
-    blender_ =
-        cv::detail::Blender::createDefault(cv::detail::Blender::NO, try_cuda_);
-  else if (blend_type_ == cv::detail::Blender::MULTI_BAND) {
-    auto* mb = dynamic_cast<cv::detail::MultiBandBlender*>(blender_.get());
-    mb->setNumBands(
-        static_cast<int>(std::ceil(log(blend_width) / log(2.)) - 1.));
-#if ENABLE_LOG
-    LOGLN("Multi-band blender, number of bands: " << mb->numBands());
-#endif
-  } else if (blend_type_ == cv::detail::Blender::FEATHER) {
-    auto* fb = dynamic_cast<cv::detail::FeatherBlender*>(blender_.get());
-    fb->setSharpness(1.f / blend_width);
-#if ENABLE_LOG
-    LOGLN("Feather blender, sharpness: " << fb->sharpness());
-#endif
-  }
   blender_->prepare(corners_, sizes_);
 #if ENABLE_LOG
   LOGLN("Prepare blender, time: "
@@ -752,9 +732,9 @@ void Stitcher::post_process(cv::Mat& frame) {
   frame.convertTo(frame, CV_8UC3);
 
   // Avoid odd width and height
-  if (frame.size().height % 2 != 0 || frame.size().width % 2 != 0) {
+  if (frame.size().height % 4 != 0 || frame.size().width % 4 != 0) {
     auto sz = frame.size();
-    cv::Rect even_roi(0, 0, sz.width - sz.width % 2, sz.height - sz.height % 2);
+    cv::Rect even_roi(0, 0, sz.width - sz.width % 4, sz.height - sz.height % 4);
     frame = frame(even_roi);
   }
 }

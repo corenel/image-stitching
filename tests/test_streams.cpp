@@ -71,6 +71,7 @@ int main(int argc, char* argv[]) {
     providers.read(frames);
     Stitcher s(num_images, frames[0].size());
     s.calibrate(frames, result, result_mask);
+    LOGLN(result.size());
     cv::imwrite("result_0.jpg", result);
 
     LOGLN("------- Processing -------");
@@ -80,8 +81,19 @@ int main(int argc, char* argv[]) {
     auto count = 0;
     while (ret) {
       LOGLN(count);
-      s.process(frames, result, result_mask);
+      // re-calibrate or just process
+      if (count % 250 == 0) {
+        s.calibrate(frames, result, result_mask);
+        LOGLN(result.size());
+        cv::imwrite("result_" + std::to_string(count) + ".jpg", result);
+      } else {
+        s.process(frames, result, result_mask);
+      }
+      // resize to fit writer
+      cv::resize(result, result, writer.size());
+      // write to output stream
       writer.write(result);
+      // read the next frame
       ret = providers.read(frames);
       count += 1;
     }

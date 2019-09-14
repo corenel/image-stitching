@@ -49,7 +49,7 @@ class Stitcher {
   double compose_work_aspect_ = 1;
   bool is_work_scale_set_ = false;
   bool is_seam_scale_set_ = false;
-  bool is_compose_scale_set_ = false;
+  //  bool is_compose_scale_set_ = false;
   // decrease this if adjuster raise errors
   float conf_thresh_ = 0.2f;
   //#ifdef HAVE_OPENCV_XFEATURES2D
@@ -113,5 +113,5 @@ class Stitcher {
   cv::Ptr<cv::detail::Blender> blender_;
 
   void reset();
-  void post_process(cv::Mat & frame);
+  static void post_process(cv::Mat& frame);
 };
