@@ -71,8 +71,13 @@ int main(int argc, char* argv[]) {
     providers.read(frames);
     Stitcher s(num_images, frames[0].size());
     s.calibrate(frames, result, result_mask);
-    LOGLN(result.size());
-    cv::imwrite("result_0.jpg", result);
+    if (result.empty()) {
+      LOGLN("Error at stitching images");
+      return 1;
+    } else {
+      LOGLN(result.size());
+      cv::imwrite("result_0.jpg", result);
+    }
 
     LOGLN("------- Processing -------");
     StreamWriter writer("result.mp4", "gst-nvidia", "h264", "720p", 25,
@@ -82,7 +87,7 @@ int main(int argc, char* argv[]) {
     while (ret) {
       LOGLN(count);
       // re-calibrate or just process
-      if (count % 250 == 0) {
+      if (false && count % 250 == 0) {
         s.calibrate(frames, result, result_mask);
         LOGLN(result.size());
         cv::imwrite("result_" + std::to_string(count) + ".jpg", result);
@@ -90,9 +95,10 @@ int main(int argc, char* argv[]) {
         s.process(frames, result, result_mask);
       }
       // resize to fit writer
-      cv::resize(result, result, writer.size());
+      cv::resize(result, result_resized, writer.size());
+      cv::imwrite("result_tmp.jpg", result_resized);
       // write to output stream
-      writer.write(result);
+      writer.write(result_resized);
       // read the next frame
       ret = providers.read(frames);
       count += 1;

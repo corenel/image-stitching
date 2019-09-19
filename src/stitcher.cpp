@@ -6,7 +6,7 @@ Stitcher::Stitcher(const int& num_images_given, cv::Size image_size_given)
 }
 
 void Stitcher::reset() {
-  if (features_type_ == "orb") match_conf_ = 0.3f;
+  if (features_type_ == "orb") match_conf_ = 0.2f;
   if (preview_) {
     compose_megapix_ = 0.6;
   }
@@ -342,8 +342,12 @@ int Stitcher::calibrate(const std::vector<cv::Mat>& full_img, cv::Mat& result,
   for (int i = 0; i < num_images_ - 1; ++i) {
     matchMask.getMat(cv::ACCESS_READ).at<char>(i, i + 1) = 1;
   }
+  for (int i = 1; i < num_images_; ++i) {
+    matchMask.getMat(cv::ACCESS_READ).at<char>(i, i - 1) = 1;
+  }
   // mask frames from the first and the last camera
-  matchMask.getMat(cv::ACCESS_READ).at<char>(0, num_images_) = 1;
+  matchMask.getMat(cv::ACCESS_READ).at<char>(0, num_images_ - 1) = 1;
+  matchMask.getMat(cv::ACCESS_READ).at<char>(num_images_ - 1, 0) = 1;
   (*matcher_)(features_, pairwise_matches, matchMask);
   //  (*matcher_)(features_, pairwise_matches);
 
