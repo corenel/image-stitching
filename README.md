@@ -23,3 +23,7 @@ A playground for testing image stitching algorithms.
      -c <string>,  --calib <string>
        (required)  Path to list of calib images (one path per line as format of plain text)
   ```
+
+### Python bindings
+
+See [this documnet](docs/bindings.md).
