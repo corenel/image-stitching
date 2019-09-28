@@ -57,10 +57,21 @@ int main(int argc, char** argv) {
   Mat original_image = imread(filename);
   Mat image;
 
+  // image 1 & 3
+  //  roi_corners.emplace_back(573, 455);
+  //  roi_corners.emplace_back(706, 455);
+  //  roi_corners.emplace_back(715, 577);
+  //  roi_corners.emplace_back(563, 577);
+  // image 2
   roi_corners.emplace_back(586, 283);
   roi_corners.emplace_back(693, 283);
-  roi_corners.emplace_back(699, 359);
-  roi_corners.emplace_back(581, 359);
+  roi_corners.emplace_back(698, 359);
+  roi_corners.emplace_back(580, 359);
+  // image 4
+  //  roi_corners.emplace_back(586, 283);
+  //  roi_corners.emplace_back(693, 283);
+  //  roi_corners.emplace_back(699, 359);
+  //  roi_corners.emplace_back(581, 359);
 
   namedWindow(windowTitle, WINDOW_NORMAL);
   namedWindow("Warped Image", WINDOW_NORMAL);
@@ -102,18 +113,37 @@ int main(int argc, char** argv) {
 
       imshow(windowTitle, image);
 
+      auto side_length = 100.0f;
       dst_corners[0].x = 0;
       dst_corners[0].y = 0;
-      dst_corners[1].x = (float)std::max(norm(roi_corners[0] - roi_corners[1]),
-                                         norm(roi_corners[2] - roi_corners[3]));
+      dst_corners[1].x = side_length;
       dst_corners[1].y = 0;
-      dst_corners[2].x = (float)std::max(norm(roi_corners[0] - roi_corners[1]),
-                                         norm(roi_corners[2] - roi_corners[3]));
-      dst_corners[2].y = (float)std::max(norm(roi_corners[1] - roi_corners[2]),
-                                         norm(roi_corners[3] - roi_corners[0]));
+      dst_corners[2].x = side_length;
+      dst_corners[2].y = side_length;
       dst_corners[3].x = 0;
-      dst_corners[3].y = (float)std::max(norm(roi_corners[1] - roi_corners[2]),
-                                         norm(roi_corners[3] - roi_corners[0]));
+      dst_corners[3].y = side_length;
+
+      //      dst_corners[0].x = 0;
+      //      dst_corners[0].y = 0;
+      //      dst_corners[1].x = (float)std::max(norm(roi_corners[0] -
+      //      roi_corners[1]),
+      //                                         norm(roi_corners[2] -
+      //                                         roi_corners[3]));
+      //      dst_corners[1].y = 0;
+      //      dst_corners[2].x = (float)std::max(norm(roi_corners[0] -
+      //      roi_corners[1]),
+      //                                         norm(roi_corners[2] -
+      //                                         roi_corners[3]));
+      //      dst_corners[2].y = (float)std::max(norm(roi_corners[1] -
+      //      roi_corners[2]),
+      //                                         norm(roi_corners[3] -
+      //                                         roi_corners[0]));
+      //      dst_corners[3].x = 0;
+      //      dst_corners[3].y = (float)std::max(norm(roi_corners[1] -
+      //      roi_corners[2]),
+      //                                         norm(roi_corners[3] -
+      //                                         roi_corners[0]));
+
       //      // get homography
       //      Mat H = findHomography(roi_corners, dst_corners);
       //      Size warped_image_size =
