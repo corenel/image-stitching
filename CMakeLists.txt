@@ -61,9 +61,10 @@ endif (USE_OPENMP)
 
 #add_simple_test(test_images)
 #add_simple_test(test_videos)
-add_simple_test(test_streams)
+#add_simple_test(test_streams)
 add_simple_test(test_gst)
-# add_simple_test(test_stitching_detailed_origianl)
+add_simple_test(test_stitching_detailed_origianl)
+add_simple_test(test_warp_perspective)
 
 OPTION(BUILD_PYTHON_BINDINGS "Build bindings for Python" OFF)
 if (BUILD_PYTHON_BINDINGS)
