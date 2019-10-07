@@ -49,6 +49,7 @@ Config example:
 
     ![Select the points](warp_screen.jpg)
 
+    - This process will automatically detect and select corner if possible.
     - The order should be the same as it is in the groundtruth (not as it in the screen). 
 
     ![Ground truth](warp_groundtruth.jpg)
