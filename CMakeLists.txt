@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.5.1)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_definitions(-Wall -Wno-dev -O2)
+add_definitions(-Wall -Wno-dev -g)
 
 project(image_stitching)
 
@@ -44,6 +44,7 @@ include_directories(
 add_library(
     ${PROJECT_NAME}
     src/stitcher.cpp
+    src/warper.cpp
     src/video_provider.cpp
     src/stream_provider.cpp
     src/stream_writer.cpp
