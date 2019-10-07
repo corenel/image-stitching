@@ -5,7 +5,7 @@
 #include "opencv2/opencv.hpp"
 
 struct WarpConfig {
-  WarpConfig(std::string  input_url, const float& input_left,
+  WarpConfig(std::string input_url, const float& input_left,
              const float& input_top, const float& input_right,
              const float& input_bottom)
       : url(std::move(input_url)),
@@ -39,6 +39,8 @@ class Warper {
   std::vector<WarpTransform> calibrate(const std::vector<WarpConfig>& configs);
   std::vector<WarpTransform> calibrate(const std::vector<cv::Mat>& frames,
                                        const std::vector<WarpConfig>& configs);
+  cv::Mat merge(const std::vector<cv::Mat>& frames,
+                const std::vector<WarpTransform>& transforms);
   void help(char** argv);
 
  private:
