@@ -1,19 +1,50 @@
 #pragma once
 #include <string>
+#include <utility>
 #include <vector>
 #include "opencv2/opencv.hpp"
+
+struct WarpConfig {
+  WarpConfig(std::string  input_url, const float& input_left,
+             const float& input_top, const float& input_right,
+             const float& input_bottom)
+      : url(std::move(input_url)),
+        left(input_left),
+        top(input_top),
+        right(input_right),
+        bottom(input_bottom){};
+  std::string url;
+  float left, top, right, bottom;
+};
+
+struct WarpTransform {
+  cv::Matx33f M;
+  float width{}, height{};
+  cv::Point2f orig;
+};
 
 class Warper {
  public:
   explicit Warper();
   ~Warper();
-  void calibrate_single(const std::string& filename, const float& left,
-                        const float& top, const float& right,
-                        const float& bottom);
+  WarpTransform calibrate_single(const WarpConfig& config);
+  WarpTransform calibrate_single(const cv::Mat& frame,
+                                 const WarpConfig& config);
+  WarpTransform calibrate_single(const std::string& filename, const float& left,
+                                 const float& top, const float& right,
+                                 const float& bottom);
+  WarpTransform calibrate_single(const cv::Mat& frame, const float& left,
+                                 const float& top, const float& right,
+                                 const float& bottom);
+  std::vector<WarpTransform> calibrate(const std::vector<WarpConfig>& configs);
+  std::vector<WarpTransform> calibrate(const std::vector<cv::Mat>& frames,
+                                       const std::vector<WarpConfig>& configs);
   void help(char** argv);
 
  private:
-  static void onMouse(int event, int x, int y, int, void*);
+  WarpTransform calibrate_single(const float& left, const float& top,
+                                 const float& right, const float& bottom);
+  static void onCalibrationMouse(int event, int x, int y, int, void*);
   cv::Point2f adjust_point(const int& x, const int& y);
 
   // params for calibration

@@ -3,11 +3,8 @@
 #include "warper.hpp"
 
 int main(int argc, char** argv) {
+  // parse arguments
   cv::CommandLineParser parser(argc, argv, "{@input| input.csv |}");
-
-  Warper warper;
-  warper.help(argv);
-
   std::string filename =
       cv::samples::findFile(parser.get<std::string>("@input"));
   io::CSVReader<5> in(filename);
@@ -15,10 +12,15 @@ int main(int argc, char** argv) {
                  "bottom");
   std::string url;
   float left, top, right, bottom;
+  std::vector<WarpConfig> configs;
   while (in.read_row(url, left, top, right, bottom)) {
-    // do stuff with the data
-    warper.calibrate_single(url, left, top, right, bottom);
+    configs.emplace_back(url, left, top, right, bottom);
   }
+
+  // calibrate
+  Warper warper;
+  warper.help(argv);
+  auto transforms = warper.calibrate(configs);
 
   return 0;
 }

@@ -2,20 +2,46 @@
 
 Warper::Warper() {}
 
-Warper::~Warper() { cv::setMouseCallback(window_title_, NULL, 0); }
+Warper::~Warper() { cv::setMouseCallback(window_title_, nullptr, 0); }
 
-void Warper::calibrate_single(const std::string& filename, const float& left,
-                              const float& top, const float& right,
-                              const float& bottom) {
-  roi_corners_.clear();
+WarpTransform Warper::calibrate_single(const WarpConfig& config) {
+  return calibrate_single(config.url, config.left, config.top, config.right,
+                          config.bottom);
+}
+
+WarpTransform Warper::calibrate_single(const cv::Mat& frame,
+                                       const WarpConfig& config) {
+  return calibrate_single(frame, config.left, config.top, config.right,
+                          config.bottom);
+}
+
+WarpTransform Warper::calibrate_single(const std::string& filename,
+                                       const float& left, const float& top,
+                                       const float& right,
+                                       const float& bottom) {
   original_image_ = cv::imread(filename);
+  return calibrate_single(left, top, right, bottom);
+}
+
+WarpTransform Warper::calibrate_single(const cv::Mat& frame, const float& left,
+                                       const float& top, const float& right,
+                                       const float& bottom) {
+  original_image_ = frame;
+  return calibrate_single(left, top, right, bottom);
+}
+
+WarpTransform Warper::calibrate_single(const float& left, const float& top,
+                                       const float& right,
+                                       const float& bottom) {
+  WarpTransform t;
+  roi_corners_.clear();
 
   cv::namedWindow(window_title_, cv::WINDOW_NORMAL);
   cv::namedWindow("Warped Image", cv::WINDOW_NORMAL);
   cv::moveWindow("Warped Image", 20, 20);
   cv::moveWindow(window_title_, 330, 20);
 
-  cv::setMouseCallback(window_title_, onMouse, this);
+  cv::setMouseCallback(window_title_, onCalibrationMouse, this);
 
   bool endProgram = false;
   while (!endProgram) {
@@ -28,10 +54,10 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
 
         if (i > 0) {
           cv::line(image_, roi_corners_[i - 1], roi_corners_[(i)],
-               cv::Scalar(0, 0, 255), 2);
+                   cv::Scalar(0, 0, 255), 2);
           cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
           cv::putText(image_, labels_[i].c_str(), roi_corners_[i],
-                  cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+                      cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
         }
       }
       cv::imshow(window_title_, image_);
@@ -42,10 +68,10 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
       image_ = original_image_.clone();
       for (int i = 0; i < 4; ++i) {
         cv::line(image_, roi_corners_[i], roi_corners_[(i + 1) % 4],
-             cv::Scalar(0, 0, 255), 2);
+                 cv::Scalar(0, 0, 255), 2);
         cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
         cv::putText(image_, labels_[i].c_str(), roi_corners_[i],
-                cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+                    cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
       }
 
       cv::imshow(window_title_, image_);
@@ -60,19 +86,19 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
       dst_corners_[3].y = side_length * (top - bottom);
 
       // calculate transformation
-      cv::Matx33f M = cv::getPerspectiveTransform(dst_corners_, roi_corners_);
+      t.M = cv::getPerspectiveTransform(dst_corners_, roi_corners_);
 
       // calculate warped position of all corners
-      cv::Point3f a = M.inv() * cv::Point3f(0, 0, 1);
+      cv::Point3f a = t.M.inv() * cv::Point3f(0, 0, 1);
       a = a * (1.0 / a.z);
 
-      cv::Point3f b = M.inv() * cv::Point3f(0, image_.rows, 1);
+      cv::Point3f b = t.M.inv() * cv::Point3f(0, image_.rows, 1);
       b = b * (1.0 / b.z);
 
-      cv::Point3f c = M.inv() * cv::Point3f(image_.cols, image_.rows, 1);
+      cv::Point3f c = t.M.inv() * cv::Point3f(image_.cols, image_.rows, 1);
       c = c * (1.0 / c.z);
 
-      cv::Point3f d = M.inv() * cv::Point3f(image_.cols, 0, 1);
+      cv::Point3f d = t.M.inv() * cv::Point3f(image_.cols, 0, 1);
       d = d * (1.0 / d.z);
 
       // to make sure all corners are in the image
@@ -83,12 +109,12 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
           std::ceil(std::abs(std::min(std::min(a.y, b.y), std::min(c.y, d.y))));
 
       // and also < (width, height)
-      float width = std::ceil(std::abs(
-                        std::max(std::max(a.x, b.x), std::max(c.x, d.x)))) +
-                    x;
-      float height = std::ceil(std::abs(
-                         std::max(std::max(a.y, b.y), std::max(c.y, d.y)))) +
-                     y;
+      t.width = std::ceil(std::abs(
+                    std::max(std::max(a.x, b.x), std::max(c.x, d.x)))) +
+                x;
+      t.height = std::ceil(std::abs(
+                     std::max(std::max(a.y, b.y), std::max(c.y, d.y)))) +
+                 y;
 
       // adjust target points accordingly
       for (int i = 0; i < 4; i++) {
@@ -96,11 +122,11 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
       }
 
       // recalculate transformation
-      M = cv::getPerspectiveTransform(dst_corners_, roi_corners_);
+      t.M = cv::getPerspectiveTransform(dst_corners_, roi_corners_);
 
       // get result
-      cv::warpPerspective(original_image_, warped_image, M,
-                          cv::Size(width, height), cv::WARP_INVERSE_MAP);
+      cv::warpPerspective(original_image_, warped_image, t.M,
+                          cv::Size(t.width, t.height), cv::WARP_INVERSE_MAP);
 
       cv::imshow("Warped Image", warped_image);
     }
@@ -108,7 +134,8 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
     char c = (char)cv::waitKey(10);
 
     // quit
-    if ((c == 'q') | (c == 'Q') | (c == 27)) {
+    if (((c == 'q') | (c == 'Q') | (c == 27)) & validation_needed_ &
+        (roi_corners_.size() == 4)) {
       endProgram = true;
     }
     // clear
@@ -126,7 +153,8 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
       swap(roi_corners_[2], roi_corners_[3]);
     }
     // save result
-    if ((c == 's') | (c == 'S')) {
+    if (((c == 's') | (c == 'S')) & validation_needed_ &
+        (roi_corners_.size() == 4)) {
       // remove the black background
       cv::Mat warped_image_bgra;
 #if (CV_VERSION_MAJOR >= 4)
@@ -148,9 +176,43 @@ void Warper::calibrate_single(const std::string& filename, const float& left,
       cv::imwrite("result.png", warped_image_bgra);
     }
   }
+
+  if (roi_corners_.size() < 4) {
+    std::cerr << "No enough points to warp image" << std::endl;
+  }
+
+  // get coordinate of the original point
+  cv::Point3f tmp =
+      t.M.inv() * cv::Point3f(roi_corners_[0].x, roi_corners_[0].y, 1);
+  tmp = tmp * (1.0 / tmp.z);
+  t.orig.x = left * side_length - tmp.x;
+  t.orig.y = top * side_length - tmp.y;
+
+  return t;
 }
 
-void Warper::onMouse(int event, int x, int y, int, void* param) {
+std::vector<WarpTransform> Warper::calibrate(
+    const std::vector<WarpConfig>& configs) {
+  std::vector<WarpTransform> ts;
+  for (const auto& config : configs) {
+    ts.push_back(calibrate_single(config));
+  }
+  return ts;
+}
+
+std::vector<WarpTransform> Warper::calibrate(
+    const std::vector<cv::Mat>& frames,
+    const std::vector<WarpConfig>& configs) {
+  assert(frames.size() == configs.size());
+
+  std::vector<WarpTransform> ts;
+  for (size_t i = 0; i < configs.size(); ++i) {
+    ts.push_back(calibrate_single(frames[i], configs[i]));
+  }
+  return ts;
+}
+
+void Warper::onCalibrationMouse(int event, int x, int y, int, void* param) {
   auto* pThis = (Warper*)param;
   // Action when left button is pressed
   if (pThis->roi_corners_.size() == 4) {
@@ -228,9 +290,9 @@ cv::Point2f Warper::adjust_point(const int& x, const int& y) {
                             min_distance_, cv::Mat(), block_size_,
                             user_harris_detector_, k_);
     if (!corners_.empty()) {
-      return cv::Point2f((float)(std::max(0, x - roi_range_) + corners_[0].x),
-                         (float)(std::max(0, y - roi_range_) + corners_[0].y));
+      return cv::Point2f{(float)(std::max(0, x - roi_range_) + corners_[0].x),
+                         (float)(std::max(0, y - roi_range_) + corners_[0].y)};
     }
   }
-  return cv::Point2f(x, y);
+  return cv::Point2f{float(x), float(y)};
 }
