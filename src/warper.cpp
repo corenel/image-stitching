@@ -1,76 +1,78 @@
 #include "warper.hpp"
 
-Warper::Warper(const std::string& filename) {
-  original_image = cv::imread(filename);
-}
+Warper::Warper() {}
 
-Warper::~Warper() { cv::setMouseCallback(windowTitle, NULL, 0); }
+Warper::~Warper() { cv::setMouseCallback(window_title_, NULL, 0); }
 
-void Warper::calibrate() {
-  cv::namedWindow(windowTitle, cv::WINDOW_NORMAL);
+void Warper::calibrate_single(const std::string& filename, const float& left,
+                              const float& top, const float& right,
+                              const float& bottom) {
+  roi_corners_.clear();
+  original_image_ = cv::imread(filename);
+
+  cv::namedWindow(window_title_, cv::WINDOW_NORMAL);
   cv::namedWindow("Warped Image", cv::WINDOW_NORMAL);
   cv::moveWindow("Warped Image", 20, 20);
-  cv::moveWindow(windowTitle, 330, 20);
+  cv::moveWindow(window_title_, 330, 20);
 
-  cv::setMouseCallback(windowTitle, onMouse, this);
+  cv::setMouseCallback(window_title_, onMouse, this);
 
   bool endProgram = false;
   while (!endProgram) {
-    if (validation_needed & (roi_corners.size() < 4)) {
-      validation_needed = false;
-      image = original_image.clone();
+    if (validation_needed_ & (roi_corners_.size() < 4)) {
+      validation_needed_ = false;
+      image_ = original_image_.clone();
 
-      for (size_t i = 0; i < roi_corners.size(); ++i) {
-        circle(image, roi_corners[i], 5, cv::Scalar(0, 255, 0), 3);
+      for (size_t i = 0; i < roi_corners_.size(); ++i) {
+        cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
 
         if (i > 0) {
-          line(image, roi_corners[i - 1], roi_corners[(i)],
+          cv::line(image_, roi_corners_[i - 1], roi_corners_[(i)],
                cv::Scalar(0, 0, 255), 2);
-          circle(image, roi_corners[i], 5, cv::Scalar(0, 255, 0), 3);
-          putText(image, labels[i].c_str(), roi_corners[i],
+          cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
+          cv::putText(image_, labels_[i].c_str(), roi_corners_[i],
                   cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
         }
       }
-      imshow(windowTitle, image);
+      cv::imshow(window_title_, image_);
     }
 
     cv::Mat warped_image;
-    if (validation_needed & (roi_corners.size() == 4)) {
-      image = original_image.clone();
+    if (validation_needed_ & (roi_corners_.size() == 4)) {
+      image_ = original_image_.clone();
       for (int i = 0; i < 4; ++i) {
-        line(image, roi_corners[i], roi_corners[(i + 1) % 4],
+        cv::line(image_, roi_corners_[i], roi_corners_[(i + 1) % 4],
              cv::Scalar(0, 0, 255), 2);
-        circle(image, roi_corners[i], 5, cv::Scalar(0, 255, 0), 3);
-        putText(image, labels[i].c_str(), roi_corners[i],
+        cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
+        cv::putText(image_, labels_[i].c_str(), roi_corners_[i],
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
       }
 
-      imshow(windowTitle, image);
+      cv::imshow(window_title_, image_);
 
-      auto side_length = 200.0f;
-      dst_corners[0].x = 0;
-      dst_corners[0].y = 0;
-      dst_corners[1].x = side_length;
-      dst_corners[1].y = 0;
-      dst_corners[2].x = side_length;
-      dst_corners[2].y = 1.5 * side_length;
-      dst_corners[3].x = 0;
-      dst_corners[3].y = 1.5 * side_length;
+      dst_corners_[0].x = 0;
+      dst_corners_[0].y = 0;
+      dst_corners_[1].x = side_length * (right - left);
+      dst_corners_[1].y = 0;
+      dst_corners_[2].x = side_length * (right - left);
+      dst_corners_[2].y = side_length * (top - bottom);
+      dst_corners_[3].x = 0;
+      dst_corners_[3].y = side_length * (top - bottom);
 
       // calculate transformation
-      cv::Matx33f M = cv::getPerspectiveTransform(dst_corners, roi_corners);
+      cv::Matx33f M = cv::getPerspectiveTransform(dst_corners_, roi_corners_);
 
       // calculate warped position of all corners
       cv::Point3f a = M.inv() * cv::Point3f(0, 0, 1);
       a = a * (1.0 / a.z);
 
-      cv::Point3f b = M.inv() * cv::Point3f(0, image.rows, 1);
+      cv::Point3f b = M.inv() * cv::Point3f(0, image_.rows, 1);
       b = b * (1.0 / b.z);
 
-      cv::Point3f c = M.inv() * cv::Point3f(image.cols, image.rows, 1);
+      cv::Point3f c = M.inv() * cv::Point3f(image_.cols, image_.rows, 1);
       c = c * (1.0 / c.z);
 
-      cv::Point3f d = M.inv() * cv::Point3f(image.cols, 0, 1);
+      cv::Point3f d = M.inv() * cv::Point3f(image_.cols, 0, 1);
       d = d * (1.0 / d.z);
 
       // to make sure all corners are in the image
@@ -90,14 +92,14 @@ void Warper::calibrate() {
 
       // adjust target points accordingly
       for (int i = 0; i < 4; i++) {
-        dst_corners[i] += cv::Point2f(x, y);
+        dst_corners_[i] += cv::Point2f(x, y);
       }
 
       // recalculate transformation
-      M = cv::getPerspectiveTransform(dst_corners, roi_corners);
+      M = cv::getPerspectiveTransform(dst_corners_, roi_corners_);
 
       // get result
-      cv::warpPerspective(original_image, warped_image, M,
+      cv::warpPerspective(original_image_, warped_image, M,
                           cv::Size(width, height), cv::WARP_INVERSE_MAP);
 
       cv::imshow("Warped Image", warped_image);
@@ -111,17 +113,17 @@ void Warper::calibrate() {
     }
     // clear
     if ((c == 'c') | (c == 'C')) {
-      roi_corners.clear();
+      roi_corners_.clear();
     }
     // rotate
     if ((c == 'r') | (c == 'R')) {
-      roi_corners.push_back(roi_corners[0]);
-      roi_corners.erase(roi_corners.begin());
+      roi_corners_.push_back(roi_corners_[0]);
+      roi_corners_.erase(roi_corners_.begin());
     }
     // inverse
     if ((c == 'i') | (c == 'I')) {
-      swap(roi_corners[0], roi_corners[1]);
-      swap(roi_corners[2], roi_corners[3]);
+      swap(roi_corners_[0], roi_corners_[1]);
+      swap(roi_corners_[2], roi_corners_[3]);
     }
     // save result
     if ((c == 's') | (c == 'S')) {
@@ -151,73 +153,44 @@ void Warper::calibrate() {
 void Warper::onMouse(int event, int x, int y, int, void* param) {
   auto* pThis = (Warper*)param;
   // Action when left button is pressed
-  if (pThis->roi_corners.size() == 4) {
+  if (pThis->roi_corners_.size() == 4) {
     for (int i = 0; i < 4; ++i) {
       if ((event == cv::EVENT_LBUTTONDOWN) &
-          ((std::abs(pThis->roi_corners[i].x - x) < 10)) &
-          (std::abs(pThis->roi_corners[i].y - y) < 10)) {
-        pThis->selected_corner_index = i;
-        pThis->dragging = true;
+          ((std::abs(pThis->roi_corners_[i].x - x) < 10)) &
+          (std::abs(pThis->roi_corners_[i].y - y) < 10)) {
+        pThis->selected_corner_index_ = i;
+        pThis->is_dragging_ = true;
       }
     }
   } else if (event == cv::EVENT_LBUTTONDOWN) {
-    if (true) {
-      int roi_range = 50;
-      cv::Rect roi(std::max(0, x - roi_range), std::max(0, y - roi_range),
-                   roi_range, roi_range);
-      cv::Mat roiImg = pThis->original_image(roi);
-      cv::Mat gray;
-      cv::cvtColor(roiImg, gray, cv::COLOR_BGR2GRAY);
-      // GFTT Settings
-      int maxCorners = 1;
-      double qualityLevel = 0.05;
-      double minDistance = 2.0;
-      int blockSize = 3;
-      bool userHarrisDetector = true;
-      double k = 0.04;
-      // A place to put the returned corners.
-      // each element is an (x, y) coord of the corner
-      std::vector<cv::Point2f> corners;
-      corners.reserve(maxCorners);
-      // Use GFTT to find Harris corners
-      goodFeaturesToTrack(gray, corners, maxCorners, qualityLevel, minDistance,
-                          cv::Mat(), blockSize, userHarrisDetector, k);
-      if (!corners.empty()) {
-        pThis->roi_corners.emplace_back(
-            (float)(std::max(0, x - roi_range) + corners[0].x),
-            (float)(std::max(0, y - roi_range) + corners[0].y));
-
-      } else {
-        pThis->roi_corners.emplace_back((float)x, (float)y);
-      }
-    } else {
-      pThis->roi_corners.emplace_back((float)x, (float)y);
-    }
-    pThis->validation_needed = true;
+    auto pt = pThis->adjust_point(x, y);
+    pThis->roi_corners_.push_back(pt);
+    pThis->validation_needed_ = true;
   }
 
   // Action when left button is released
   if (event == cv::EVENT_LBUTTONUP) {
-    pThis->dragging = false;
+    pThis->is_dragging_ = false;
   }
 
   // Action when left button is pressed and mouse has moved over the window
-  if ((event == cv::EVENT_MOUSEMOVE) && pThis->dragging) {
-    pThis->roi_corners[pThis->selected_corner_index].x = (float)x;
-    pThis->roi_corners[pThis->selected_corner_index].y = (float)y;
-    pThis->validation_needed = true;
+  if ((event == cv::EVENT_MOUSEMOVE) && pThis->is_dragging_) {
+    auto pt = pThis->adjust_point(x, y);
+    pThis->roi_corners_[pThis->selected_corner_index_].x = pt.x;
+    pThis->roi_corners_[pThis->selected_corner_index_].y = pt.y;
+    pThis->validation_needed_ = true;
   }
 }
 
 void Warper::help(char** argv) {
   // print a welcome message, and the OpenCV version
   std::cout << "\nThis is a demo program shows how perspective transformation "
-               "applied on an image, \n"
+               "applied on images, \n"
                "Using OpenCV version "
             << CV_VERSION << std::endl;
 
   std::cout << "\nUsage:\n"
-            << argv[0] << " [image_name -- Default right.jpg]\n"
+            << argv[0] << " [config_name -- Default input.csv]\n"
             << std::endl;
 
   std::cout << "\nHot keys: \n"
@@ -229,4 +202,35 @@ void Warper::help(char** argv) {
                "\nUse your mouse to select a point and move it to see "
                "transformation changes"
             << std::endl;
+
+  std::cout << "\nConfig example: \n"
+               "\turl,left,top,right,bottom\n"
+               "\t../assets/warship/sim_1/cam1.png,2.0,1.5,4.0,0.5\n"
+               "\t../assets/warship/sim_1/cam2.png,0.0,6.0,3.0,4.0\n"
+               "\t../assets/warship/sim_1/cam3.png,-4.5,-0.5,-2.5,-1.5\n"
+               "\t../assets/warship/sim_1/cam4.png,-2.0,-4.0,2,0,-6.0\n"
+            << std::endl;
+}
+
+cv::Point2f Warper::adjust_point(const int& x, const int& y) {
+  if (use_corner_detection_) {
+    cv::Rect roi(std::max(0, x - roi_range_), std::max(0, y - roi_range_),
+                 roi_range_, roi_range_);
+    cv::Mat roiImg = original_image_(roi);
+    cv::Mat gray;
+    cv::cvtColor(roiImg, gray, cv::COLOR_BGR2GRAY);
+    // A place to put the returned corners.
+    // each element is an (x, y) coord of the corner
+    corners_.clear();
+    corners_.reserve(max_corners_);
+    // Use GFTT to find Harris corners
+    cv::goodFeaturesToTrack(gray, corners_, max_corners_, quality_level_,
+                            min_distance_, cv::Mat(), block_size_,
+                            user_harris_detector_, k_);
+    if (!corners_.empty()) {
+      return cv::Point2f((float)(std::max(0, x - roi_range_) + corners_[0].x),
+                         (float)(std::max(0, y - roi_range_) + corners_[0].y));
+    }
+  }
+  return cv::Point2f(x, y);
 }
