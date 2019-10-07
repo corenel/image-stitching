@@ -23,7 +23,8 @@ A playground for testing image stitching algorithms.
      -c <string>,  --calib <string>
        (required)  Path to list of calib images (one path per line as format of plain text)
   ```
+ - `test_warp_perspective`: Convert images into top view and merge thme into single one. Details can be seen in [this document](docs/warp.md)
 
 ### Python bindings
 
-See [this documnet](docs/bindings.md).
+See [this document](docs/bindings.md).

@@ -33,7 +33,7 @@ WarpTransform Warper::calibrate_single(const cv::Mat& frame, const float& left,
 WarpTransform Warper::calibrate_single(const float& left, const float& top,
                                        const float& right,
                                        const float& bottom) {
-  WarpTransform t;
+  auto t = WarpTransform();
   roi_corners_.clear();
 
   cv::namedWindow(window_title_, cv::WINDOW_NORMAL);
@@ -57,7 +57,8 @@ WarpTransform Warper::calibrate_single(const float& left, const float& top,
                    cv::Scalar(0, 0, 255), 2);
           cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
           cv::putText(image_, labels_[i].c_str(), roi_corners_[i],
-                      cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+                      cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 255, 0),
+                      2);
         }
       }
       cv::imshow(window_title_, image_);
@@ -71,7 +72,7 @@ WarpTransform Warper::calibrate_single(const float& left, const float& top,
                  cv::Scalar(0, 0, 255), 2);
         cv::circle(image_, roi_corners_[i], 5, cv::Scalar(0, 255, 0), 3);
         cv::putText(image_, labels_[i].c_str(), roi_corners_[i],
-                    cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+                    cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 255, 0), 2);
       }
 
       cv::imshow(window_title_, image_);
@@ -162,16 +163,18 @@ WarpTransform Warper::calibrate_single(const float& left, const float& top,
 #else
       cv::cvtColor(warped_image, warped_image_bgra, CV_BGR2BGRA);
 #endif
-      // find all white pixel and set alpha value to zero:
-      for (int y = 0; y < warped_image_bgra.rows; ++y)
+      // find all black pixel and set alpha value to zero:
+      for (int y = 0; y < warped_image_bgra.rows; ++y) {
         for (int x = 0; x < warped_image_bgra.cols; ++x) {
           auto& pixel = warped_image_bgra.at<cv::Vec4b>(y, x);
-          // if pixel is white
+          // if pixel is black
           if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) {
             // set alpha to zero:
             pixel[3] = 0;
           }
         }
+      }
+      cv::imwrite("screen.jpg", image_);
       cv::imwrite("result.jpg", warped_image);
       cv::imwrite("result.png", warped_image_bgra);
     }
@@ -186,7 +189,7 @@ WarpTransform Warper::calibrate_single(const float& left, const float& top,
       t.M.inv() * cv::Point3f(roi_corners_[0].x, roi_corners_[0].y, 1);
   tmp = tmp * (1.0 / tmp.z);
   t.orig.x = left * side_length - tmp.x;
-  t.orig.y = top * side_length - tmp.y;
+  t.orig.y = top * side_length + tmp.y;
 
   return t;
 }
@@ -247,7 +250,7 @@ void Warper::onCalibrationMouse(int event, int x, int y, int, void* param) {
 void Warper::help(char** argv) {
   // print a welcome message, and the OpenCV version
   std::cout << "\nThis is a demo program shows how perspective transformation "
-               "applied on images, \n"
+               "applied on images and how to merge them into single image, \n"
                "Using OpenCV version "
             << CV_VERSION << std::endl;
 
