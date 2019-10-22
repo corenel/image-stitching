@@ -73,6 +73,17 @@ inline std::map<std::string, std::string> nvidiaDecodeElementByCodec() {
   return res;
 }
 
+inline std::map<std::string, std::string> omxDecodeElementByCodec() {
+  std::map<std::string, std::string> res;
+  res["h264"] =
+      "h264parse ! omxh264dec ! nvvidconv ! "
+      "\"video/x-raw,format=(string)BGRx\"";
+  res["h265"] =
+      "h265parse ! omxh265dec ! nvvidconv ! "
+      "\"video/x-raw,format=(string)BGRx\"";
+  return res;
+}
+
 inline std::map<std::string, std::string> VAAPIEncodeElementByCodec() {
   std::map<std::string, std::string> res;
   res["h264"] = "parsebin ! vaapih264enc";
@@ -120,6 +131,13 @@ inline std::map<std::string, std::string> libavEncodeElementByCodec() {
   res["mpeg4"] = "avenc_mpeg4";
   res["mjpeg"] = "avenc_mjpeg";
   res["vp8"] = "avenc_vp8";
+  return res;
+}
+
+inline std::map<std::string, std::string> omxEncodeElementByCodec() {
+  std::map<std::string, std::string> res;
+  res["h264"] = "omxh264enc";
+  res["h265"] = "omxh265enc";
   return res;
 }
 
@@ -172,7 +190,8 @@ inline cv::Ptr<cv::VideoCapture> createSynthSource(const cv::Size &sz,
 
 inline cv::Ptr<cv::VideoCapture> createCapture(const std::string &backend,
                                                const std::string &file_name,
-                                               const std::string &codec) {
+                                               const std::string &codec,
+                                               const bool sync = false) {
   if (backend == "gst-default") {
     std::cout << "Created GStreamer capture ( " << file_name << " )"
               << std::endl;
@@ -203,10 +222,18 @@ inline cv::Ptr<cv::VideoCapture> createCapture(const std::string &backend,
     else if (backend.find("nvidia") == 4)
       line << getValue(nvidiaDecodeElementByCodec(), codec,
                        "Invalid or unsupported codec");
+    else if (backend.find("omx") == 4)
+      line << getValue(omxDecodeElementByCodec(), codec,
+                       "Invalid or unsupported codec");
     else
       return cv::Ptr<cv::VideoCapture>();
-    line << " ! videoconvert n-threads=" << cv::getNumThreads();
-    line << " ! appsink sync=false";
+    //    line << " ! videoconvert n-threads=" << cv::getNumThreads();
+    line << " ! videoconvert";
+    //    line << " ! video/x-raw, format=(string)BGR";
+    line << " ! appsink";
+    if (sync) {
+      line << " sync=false";
+    }
     std::cout << "Created GStreamer capture  ( " << line.str() << " )"
               << std::endl;
     return cv::makePtr<cv::VideoCapture>(line.str(), cv::CAP_GSTREAMER);
@@ -240,6 +267,8 @@ inline cv::Ptr<cv::VideoWriter> createWriter(const std::string &backend,
       line << getValue(mfxEncodeElementByCodec(), codec, "Invalid codec");
     else if (backend.find("nvidia") == 4)
       line << getValue(nvidiaEncodeElementByCodec(), codec, "Invalid codec");
+    else if (backend.find("omx") == 4)
+      line << getValue(omxEncodeElementByCodec(), codec, "Invalid codec");
     else
       return cv::Ptr<cv::VideoWriter>();
     line << " ! ";

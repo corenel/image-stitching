@@ -28,11 +28,11 @@ bool StreamWriter::open(const cv::Size& sz) {
   //  LOGLN("FPS: " << fps_ << ", Frame size: " << sz);
   writer_ = createWriter(backend_, stream_url_, codec_, size_, fps_);
   if (!writer_) {
-    ERRLN("Failed to create synthetic video source or video writer");
+    ERRLN("Failed to create video writer");
     return false;
   }
   if (!writer_->isOpened()) {
-    ERRLN("Synthetic video source or video writer is not opened");
+    ERRLN("video writer is not opened");
     return false;
   }
   return true;
@@ -42,11 +42,30 @@ bool StreamWriter::isOpened() { return writer_->isOpened(); }
 
 void StreamWriter::close() { writer_.release(); }
 
-bool StreamWriter::write(const cv::Mat& frame) {
+bool StreamWriter::write(cv::Mat& frame, const bool& resize_writer,
+                         const bool& use_pre_process) {
   if (frame.empty()) {
     ERRLN("Skipping empty input frame");
     return false;
   }
+  if (use_pre_process) {
+    pre_process(frame);
+  }
+  if (resize_writer && frame.size() != size()) {
+    open(frame.size());
+  }
   *writer_ << frame;
   return true;
+}
+
+void StreamWriter::pre_process(cv::Mat& frame) {
+  // Convert type from CV_16UC3 to CV_8UC3
+  // frame.convertTo(frame, CV_8UC3);
+
+  // Avoid odd width and height
+  if (frame.size().height % 4 != 0 || frame.size().width % 4 != 0) {
+    auto sz = frame.size();
+    cv::Rect even_roi(0, 0, sz.width - sz.width % 4, sz.height - sz.height % 4);
+    frame = frame(even_roi);
+  }
 }

@@ -13,7 +13,10 @@ class StreamWriter {
   bool open(const cv::Size& sz = cv::Size(0, 0));
   bool isOpened();
   void close();
-  bool write(const cv::Mat& frame);
+  bool write(cv::Mat& frame, const bool& resize_writer = false,
+             const bool& use_pre_process = false);
+  void pre_process(cv::Mat& frame);
+
   inline cv::Size& size() { return size_; };
 
  private:

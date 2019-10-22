@@ -4,13 +4,15 @@
 
 StreamProvider::StreamProvider(std::string video_stream_url,
                                std::string backend, std::string codec,
-                               std::string resolution, unsigned fps, bool fast)
+                               std::string resolution, unsigned fps, bool fast,
+                               bool sync)
     : stream_url_(std::move(video_stream_url)),
       backend_(std::move(backend)),
       codec_(std::move(codec)),
       resolution_(std::move(resolution)),
       fps_(fps),
-      fast_measure_(fast) {
+      fast_measure_(fast),
+      sync_(sync) {
   //  LOGLN("Stream Provider");
   //  LOGLN("  Url: " << stream_url_);
   //  LOGLN("  Backend: " << backend_);
@@ -23,7 +25,7 @@ StreamProvider::StreamProvider(std::string video_stream_url,
 StreamProvider::~StreamProvider() { close(); }
 
 bool StreamProvider::open() {
-  cap_ = createCapture(backend_, stream_url_, codec_);
+  cap_ = createCapture(backend_, stream_url_, codec_, sync_);
   if (!cap_) {
     ERRLN("Failed to create video capture: " << stream_url_);
     return false;

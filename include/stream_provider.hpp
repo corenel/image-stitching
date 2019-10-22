@@ -13,7 +13,8 @@ class StreamProvider {
                           std::string backend = "gst-default",
                           std::string codec = "h264",
                           std::string resolution = "720p", unsigned fps = 30,
-                          bool fast = false);
+                          bool fast = false,
+                          bool sync=true);
   ~StreamProvider();
 
   bool open();
@@ -35,6 +36,8 @@ class StreamProvider {
   unsigned fps_;
   // fast measure fps
   bool fast_measure_;
+  // sync mode for appsink
+  bool sync_;
   cv::Ptr<cv::VideoCapture> cap_;
 };
 
